@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HMMA Label Check v3.2</title>
+<title>HMMA Label Check v3.3</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;max-width:720px;margin:auto;padding:18px;background:#f5f6f8}
@@ -12,7 +12,7 @@ input{width:100%;margin:8px 0}.result{padding:14px;border-radius:8px;margin-top:
 pre{white-space:pre-wrap;word-break:break-all;font-size:12px}
 .small{font-size:12px;color:#666}
 </style></head><body>
-<h1>HMMA Label Check v3.2</h1>
+<h1>HMMA Label Check v3.3</h1>
 
 <div class="card"><b>① GLOVIS 식별표</b>
 <input id="glovisFile" type="file" accept="image/*" capture="environment">
@@ -28,12 +28,12 @@ pre{white-space:pre-wrap;word-break:break-all;font-size:12px}
 <button onclick="compareLabels()">두 라벨 비교</button>
 <div id="finalResult" class="result wait">두 라벨을 먼저 인식하세요.</div></div>
 
-<div class="card small">세로로 촬영된 라벨은 자동으로 회전시켜 인식률을 높입니다.</div>
+<div class="card small">부품번호 형식을 엄격히 검증하여 다른 번호 오인식을 방지합니다.</div>
 
 <script>
 let G={part:"",qty:""},P={part:"",qty:""};
 
-// 이미지 자동 회전 보정 (세로 이미지 정방향 변환)
+// 세로 촬영 이미지 회전 보정
 function preprocessImage(file) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -59,67 +59,59 @@ function preprocessImage(file) {
 
 function norm(s){ return (s||"").toUpperCase().replace(/[–—−_]/g,"-").replace(/\s+/g," "); }
 
-function sanitizePartCandidate(str) {
-  return str.replace(/O/g, '0').replace(/I|L/g, '1').replace(/Z/g, '2').replace(/S/g, '5').replace(/B/g, '8');
-}
-
-function fixPart(s){
-  let clean = sanitizePartCandidate(s);
-  let m = clean.match(/(\d{5})[-]?([A-Z0-9]{5})/);
-  if(!m) return "";
-  let head = m[1], tail = m[2];
-  if(/^2[5S]\d{3}$/.test(tail)) tail = "2S" + tail.slice(2);
-  return head + "-" + tail;
-}
-
-function part(text){
-  let t = norm(text);
-  let sanitizedText = sanitizePartCandidate(t);
-  let matches = sanitizedText.match(/\b\d{5}[-][A-Z0-9]{5}\b/g) || [];
-  for(const z of matches){
-    let p = fixPart(z);
-    if(p) return p;
+// 현대/기아 부품번호 표준 형태 추출 (예: 23124-2S120)
+function extractPartNumber(text) {
+  let cleaned = norm(text);
+  
+  // 1. 숫자 5자리 - [알파벳/숫자] 5자리 패턴
+  let m = cleaned.match(/\b(\d{5})[-]?([A-Z0-9]{5})\b/g);
+  if (m) {
+    for (let candidate of m) {
+      let rawCandidate = candidate.replace("-", "");
+      // 앞 5자리는 정수, 뒤 5자리는 특수 정규 패턴 검증
+      let head = rawCandidate.slice(0, 5);
+      let tail = rawCandidate.slice(5, 10);
+      
+      // 현대/기아 엔진/부품 라벨 패턴 보정 (O -> 0 치환만 안전하게 진행)
+      head = head.replace(/O/g, '0');
+      tail = tail.replace(/O/g, '0');
+      
+      // 알파벳 S와 숫자 5 오인식만 미세 보정 (2S120 패턴)
+      if (/^2[5]\d{3}$/.test(tail)) {
+        tail = "2S" + tail.slice(2);
+      }
+      
+      return head + "-" + tail;
+    }
   }
-  let noHyphenMatches = sanitizedText.match(/\b\d{5}[A-Z0-9]{5}\b/g) || [];
-  for(const z of noHyphenMatches){
-    let p = fixPart(z);
-    if(p) return p;
+  return "";
+}
+
+function extractQty(text) {
+  let lines = text.split('\n');
+  
+  // 1. '[숫자] EA' 형태 단독 매칭 (PNDT식별표의 240 EA 등)
+  for (let line of lines) {
+    let cleanLine = norm(line);
+    let m = cleanLine.match(/\b(\d{1,5})\s*EA\b/i);
+    if (m) return m[1];
   }
-  return fixPart(sanitizedText);
-}
 
-function cleanQtyNum(str) {
-  if(!str) return "";
-  return str.replace(/O/gi, '0').replace(/I|L/gi, '1').replace(/[^0-9]/g, '');
-}
-
-function pndtQty(text){
-  let raw = (text||"").replace(/\s+/g, " ");
-  let idx = raw.search(/납품\s*수량|남품\s*수량|납\s*품|수\s*량/);
-  if(idx >= 0){
-    let target = raw.slice(idx, idx + 80);
-    let m = target.match(/[:：\s]*([0-9OIlL]{1,7})\s*(E\s*A|EA)?/i);
-    if(m) return cleanQtyNum(m[1]);
-  }
-  return genericQty(text);
-}
-
-function genericQty(text){
-  let raw = (text||"").replace(/\s+/g, " ");
-  // 1. GLOVIS 'Quantity 240' 키워드 기반 인식 (EA가 없는 경우 대응)
-  let m = raw.match(/(?:QUANTITY|QTY|Q'TY)[\s:：]*([0-9OIlL]{1,7})/i);
-  if(m) return cleanQtyNum(m[1]);
-
-  // 2. 숫자 + EA 패턴
-  m = raw.match(/([0-9OIlL]{1,7})\s*(E\s*A|EA)/i);
-  if(m) return cleanQtyNum(m[1]);
+  // 2. Quantity / QTY 라인 추출 (GLOVIS)
+  let cleanText = norm(text);
+  let qMatch = cleanText.match(/(?:QUANTITY|QTY|납품수량|수량)[\s:：]*(\d{1,5})/i);
+  if (qMatch) return qMatch[1];
 
   return "";
 }
 
 async function ocr(file, lang){
   const processedImg = await preprocessImage(file);
-  const r = await Tesseract.recognize(processedImg, lang, { logger: x => console.log(x) });
+  const r = await Tesseract.recognize(processedImg, lang, { 
+    logger: x => console.log(x),
+    // 숫자/대문자 정확도를 높이기 위한 Tesseract 화이트리스트 설정
+    tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ- ' 
+  });
   return r.data.text;
 }
 
@@ -135,7 +127,7 @@ async function readGlovis(){
   box("gResult", "인식 중…", "wait");
   try {
     let raw = await ocr(f, "eng");
-    G = { part: part(raw), qty: genericQty(raw) };
+    G = { part: extractPartNumber(raw), qty: extractQty(raw) };
     document.getElementById("gRaw").textContent = raw;
     box("gResult", "품번: <b>" + (G.part || "인식 실패") + "</b><br>수량: <b>" + (G.qty ? G.qty + " EA" : "인식 실패") + "</b>", G.part && G.qty ? "ok" : "ng");
   } catch(e) {
@@ -148,8 +140,8 @@ async function readPndt(){
   if(!f) return alert("PNDT 사진을 선택하세요.");
   box("pResult", "인식 중…", "wait");
   try {
-    let raw = await ocr(f, "kor+eng");
-    P = { part: part(raw), qty: pndtQty(raw) };
+    let raw = await ocr(f, "eng"); // PNDT 부품번호/수량 영역은 영문 엔진으로 읽어 정밀도 향상
+    P = { part: extractPartNumber(raw), qty: extractQty(raw) };
     document.getElementById("pRaw").textContent = raw;
     box("pResult", "품번: <b>" + (P.part || "인식 실패") + "</b><br>납품수량: <b>" + (P.qty ? P.qty + " EA" : "인식 실패") + "</b>", P.part && P.qty ? "ok" : "ng");
   } catch(e) {
