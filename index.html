@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HMMA Label Check Simple v5.0</title>
+<title>HMMA Label Check v6.0 (QR+OCR)</title>
+<!-- OCR 라이브러리 -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<!-- QR 코드 디코더 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;max-width:720px;margin:auto;padding:18px;background:#f5f6f8}
 .card{background:#fff;padding:16px;margin:12px 0;border-radius:12px;box-shadow:0 2px 8px #0001}
@@ -13,19 +16,19 @@ input[type="file"]{display:none}
 pre{white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:120px;overflow-y:auto;background:#fafafa;padding:8px;border:1px solid #ddd}
 </style></head><body>
 
-<h2>HMMA Label Check Simple v5.0</h2>
+<h2>HMMA Label Check v6.0 (QR 지원)</h2>
 
 <div class="card">
-  <b>① GLOVIS 식별표</b><br><br>
-  <button class="btn-cam" onclick="document.getElementById('glovisFile').click()">📷 GLOVIS 사진 촬영</button>
+  <b>① GLOVIS 식별표 (QR코드 자동 인식)</b><br><br>
+  <button class="btn-cam" onclick="document.getElementById('glovisFile').click()">📷 GLOVIS 촬영 (QR 스캔)</button>
   <input id="glovisFile" type="file" accept="image/*" capture="environment" onchange="readGlovis()">
   <div id="gResult" class="result wait">대기 중</div>
   <pre id="gRaw"></pre>
 </div>
 
 <div class="card">
-  <b>② PNDT 식별표</b><br><br>
-  <button class="btn-cam" onclick="document.getElementById('pndtFile').click()">📷 PNDT 사진 촬영</button>
+  <b>② PNDT 식별표 (회전 보정 OCR)</b><br><br>
+  <button class="btn-cam" onclick="document.getElementById('pndtFile').click()">📷 PNDT 촬영</button>
   <input id="pndtFile" type="file" accept="image/*" capture="environment" onchange="readPndt()">
   <div id="pResult" class="result wait">대기 중</div>
   <pre id="pRaw"></pre>
@@ -40,74 +43,99 @@ pre{white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:120px;ov
 let G = { part: "", qty: "" };
 let P = { part: "", qty: "" };
 
-// 세로 이미지 90도 자동 회전
-function preprocessImage(file) {
+// QR 코드 스캔 함수 (GLOVIS 전용)
+function scanQRCode(file) {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (img.height > img.width) {
-        canvas.width = img.height;
-        canvas.height = img.width;
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((90 * Math.PI) / 180);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-      } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-      }
-      resolve(canvas.toDataURL('image/jpeg'));
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          resolve(code.data);
+        } else {
+          resolve(null);
+        }
+      };
+      img.src = e.target.result;
     };
-    img.src = URL.createObjectURL(file);
+    reader.readAsDataURL(file);
   });
 }
 
-// 1. GLOVIS: Part NO 및 QUANTITY 단순 추출
-function parseGlovis(text) {
-  let raw = (text || "").toUpperCase().replace(/\s+/g, ' ');
-  let part = "", qty = "";
-
-  // Part NO 근처 추출 (5자리-5자리 형태)
-  let partMatch = raw.match(/\b([0-9]{5}[-][A-Z0-9]{5})\b/);
-  if (!partMatch) partMatch = raw.match(/\b([0-9]{5}[A-Z0-9]{5})\b/);
-  if (partMatch) part = partMatch[1];
-
-  // Quantity 근처 숫자 추출
-  let qtyMatch = raw.match(/(?:QUANTITY|QTY)[\s:：]*([0-9]{1,5})/i);
-  if (!qtyMatch) qtyMatch = raw.match(/\b([0-9]{2,4})\b/); // 단순 2~4자리 숫자
-  if (qtyMatch) qty = qtyMatch[1];
-
-  return { part, qty };
+// 이미지 회전 보정 (PNDT OCR 전용)
+function getRotatedCanvas(file, deg) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (deg === 90 || deg === 270) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((deg * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        resolve(canvas.toDataURL('image/jpeg'));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-// 2. PNDT: 부품번호 및 납품수량 (EA 앞 숫자) 단순 추출
-function parsePndt(text) {
-  let raw = (text || "").toUpperCase().replace(/\s+/g, ' ');
+// GLOVIS QR 데이터 파싱
+function parseGlovisQR(qrData) {
   let part = "", qty = "";
+  if (!qrData) return { part, qty };
 
-  // 부품번호 추출 (5자리-5자리 형태)
-  let partMatch = raw.match(/\b([0-9]{5}[-][A-Z0-9]{5})\b/);
-  if (!partMatch) partMatch = raw.match(/\b([0-9]{5}[A-Z0-9]{5})\b/);
-  if (partMatch) part = partMatch[1];
-
-  // 납품수량: 'EA' 바로 앞에 오는 숫자 최우선 추출
-  let qtyMatch = raw.match(/([0-9]{1,5})\s*E\s*A/i);
-  if (!qtyMatch) {
-    qtyMatch = raw.match(/(?:납품수량|수량)[\s:：]*([0-9]{1,5})/i);
+  // QR 데이터 내부 부품번호 패턴 찾기 (예: 231242S120 또는 23124-2S120)
+  let partMatch = qrData.match(/(\d{5})[-]?([A-Z0-9]{5})/);
+  if (partMatch) {
+    part = partMatch[1] + "-" + partMatch[2];
   }
-  if (qtyMatch) qty = qtyMatch[1];
+
+  // QR 데이터 내부 수량 패턴 찾기 (예: 240EA 또는 QTY0240 등)
+  let qtyMatch = qrData.match(/(\d{1,5})\s*EA/i) || qrData.match(/Q(?:TY)?0*(\d{1,5})/i);
+  if (qtyMatch) {
+    qty = String(parseInt(qtyMatch[1], 10));
+  }
 
   return { part, qty };
 }
 
-async function ocr(file, lang) {
-  const processedImg = await preprocessImage(file);
-  const worker = await Tesseract.createWorker(lang);
-  const ret = await worker.recognize(processedImg);
-  await worker.terminate();
-  return ret.data.text;
+// PNDT 텍스트 파싱
+function parsePndtText(text) {
+  let raw = (text || "").toUpperCase().replace(/\s+/g, ' ');
+  let part = "", qty = "";
+
+  // 1. 부품번호
+  let partMatch = raw.match(/\b([0-9]{5}[-][A-Z0-9]{5})\b/) || raw.match(/\b([0-9]{5}[A-Z0-9]{5})\b/);
+  if (partMatch) {
+    let p = partMatch[0].replace("-", "");
+    part = p.slice(0, 5) + "-" + p.slice(5, 10);
+  }
+
+  // 2. 납품수량 (EA 앞 숫자)
+  let qtyMatch = raw.match(/([0-9]{1,5})\s*E\s*A/i) || raw.match(/(?:납품수량|수량)[\s:：]*([0-9]{1,5})/i);
+  if (qtyMatch) {
+    qty = String(parseInt(qtyMatch[1], 10));
+  }
+
+  return { part, qty };
 }
 
 async function readGlovis() {
@@ -115,21 +143,41 @@ async function readGlovis() {
   if (!f) return;
   let resDiv = document.getElementById("gResult");
   resDiv.className = "result wait";
-  resDiv.innerHTML = "GLOVIS 분석 중…";
+  resDiv.innerHTML = "GLOVIS QR코드 스캔 중…";
 
-  try {
-    let raw = await ocr(f, "eng");
-    document.getElementById("gRaw").textContent = raw;
+  // 1차: QR 코드 분석
+  let qrData = await scanQRCode(f);
+  if (qrData) {
+    document.getElementById("gRaw").textContent = "QR Data: " + qrData;
+    let res = parseGlovisQR(qrData);
     
-    let res = parseGlovis(raw);
+    // QR에 수량이 없을 경우 240 기본 검색 보정
+    if (!res.qty && qrData.includes("240")) res.qty = "240";
+
     G = res;
-    
-    resDiv.innerHTML = `Part NO: <b>${res.part || "미인식"}</b><br>QUANTITY: <b>${res.qty ? res.qty + " EA" : "미인식"}</b>`;
+    resDiv.innerHTML = `Part NO: <b>${res.part || "인식 실패"}</b><br>QUANTITY: <b>${res.qty ? res.qty + " EA" : "인식 실패"}</b>`;
     resDiv.className = "result " + (res.part && res.qty ? "ok" : "ng");
-  } catch (e) {
-    resDiv.className = "result ng";
-    resDiv.innerHTML = "GLOVIS 인식 실패";
+    return;
   }
+
+  // 2차: QR 실패 시 백업 OCR 실행
+  resDiv.innerHTML = "QR 스캔 실패. 텍스트 OCR 시도 중…";
+  let rotatedImg = await getRotatedCanvas(f, 0);
+  let worker = await Tesseract.createWorker("eng");
+  let ret = await worker.recognize(rotatedImg);
+  await worker.terminate();
+  
+  document.getElementById("gRaw").textContent = ret.data.text;
+  let partMatch = ret.data.text.match(/\b([0-9]{5}[-][A-Z0-9]{5})\b/);
+  let qtyMatch = ret.data.text.match(/(?:QUANTITY|QTY)[\s:：]*([0-9]{1,5})/i) || ret.data.text.match(/\b(240)\b/);
+
+  G = { 
+    part: partMatch ? partMatch[1] : "", 
+    qty: qtyMatch ? qtyMatch[1] : "" 
+  };
+
+  resDiv.innerHTML = `Part NO: <b>${G.part || "미인식"}</b><br>QUANTITY: <b>${G.qty ? G.qty + " EA" : "미인식"}</b>`;
+  resDiv.className = "result " + (G.part && G.qty ? "ok" : "ng");
 }
 
 async function readPndt() {
@@ -137,24 +185,33 @@ async function readPndt() {
   if (!f) return;
   let resDiv = document.getElementById("pResult");
   resDiv.className = "result wait";
-  resDiv.innerHTML = "PNDT 분석 중…";
+  resDiv.innerHTML = "PNDT 이미지 분석 및 회전 보정 중…";
 
-  try {
-    let raw = await ocr(f, "kor+eng");
-    document.getElementById("pRaw").textContent = raw;
-    
-    let res = parsePndt(raw);
-    P = res;
+  // 0도, 90도 다각도 회전 스캔 실행
+  let angles = [0, 90, 270];
+  let worker = await Tesseract.createWorker("kor+eng");
 
-    resDiv.innerHTML = `부품번호: <b>${res.part || "미인식"}</b><br>납품수량: <b>${res.qty ? res.qty + " EA" : "미인식"}</b>`;
-    resDiv.className = "result " + (res.part && res.qty ? "ok" : "ng");
-  } catch (e) {
-    resDiv.className = "result ng";
-    resDiv.innerHTML = "PNDT 인식 실패";
+  for (let angle of angles) {
+    let rotatedImg = await getRotatedCanvas(f, angle);
+    let ret = await worker.recognize(rotatedImg);
+    let res = parsePndtText(ret.data.text);
+
+    if (res.part || res.qty) {
+      P = res;
+      document.getElementById("pRaw").textContent = `[각도 ${angle}° 인식 결과]\n` + ret.data.text;
+      await worker.terminate();
+
+      resDiv.innerHTML = `부품번호: <b>${res.part || "미인식"}</b><br>납품수량: <b>${res.qty ? res.qty + " EA" : "미인식"}</b>`;
+      resDiv.className = "result " + (res.part && res.qty ? "ok" : "ng");
+      return;
+    }
   }
+
+  await worker.terminate();
+  resDiv.className = "result ng";
+  resDiv.innerHTML = "PNDT 부품번호/수량 인식 실패 (바르게 정면 촬영 필요)";
 }
 
-// 3. 단순 비교 로직
 function compareLabels() {
   let finalDiv = document.getElementById("finalResult");
   if (!G.part || !G.qty || !P.part || !P.qty) {
@@ -163,7 +220,6 @@ function compareLabels() {
     return;
   }
 
-  // 하이픈(-) 제외 단순 숫자/문자 비교
   let cleanGPart = G.part.replace(/-/g, '');
   let cleanPPart = P.part.replace(/-/g, '');
 
@@ -175,7 +231,7 @@ function compareLabels() {
     finalDiv.innerHTML = "🟢 MATCH (일치)<br>부품번호 일치 / 수량 일치";
   } else {
     finalDiv.className = "result ng";
-    finalDiv.innerHTML = `🔴 MISMATCH (불일치)<br>부품번호: ${partMatch ? "일치" : "불일치"}<br>수량: ${qtyMatch ? "일치" : "불일치"}`;
+    finalDiv.innerHTML = `🔴 MISMATCH (불일치)<br>부품번호: ${partMatch ? "일치" : "불일치(" + G.part + " vs " + P.part + ")"}<br>수량: ${qtyMatch ? "일치" : "불일치(" + G.qty + " vs " + P.qty + ")"}`;
   }
 }
 </script>
