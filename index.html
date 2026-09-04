@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HMMA Label Check v3</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;max-width:720px;margin:auto;padding:18px;background:#f5f6f8}
+.card{background:#fff;padding:16px;margin:12px 0;border-radius:12px;box-shadow:0 2px 8px #0001}
+button{padding:12px 16px;border:0;border-radius:8px;background:#222;color:#fff;font-size:16px;margin:4px}
+input{width:100%;margin:8px 0}.result{padding:14px;border-radius:8px;margin-top:10px;font-size:18px;font-weight:bold}
+.ok{background:#dff5e5;color:#08752b}.ng{background:#ffe2e2;color:#a40000}.wait{background:#eee}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px}
+.small{font-size:12px;color:#666}
+</style></head><body>
+<h1>HMMA Label Check v3</h1>
+
+<div class="card"><b>① GLOVIS 식별표</b>
+<input id="glovisFile" type="file" accept="image/*" capture="environment">
+<button onclick="readGlovis()">GLOVIS 인식</button>
+<div id="gResult" class="result wait">대기 중</div><pre id="gRaw"></pre></div>
+
+<div class="card"><b>② PNDT 식별표</b>
+<input id="pndtFile" type="file" accept="image/*" capture="environment">
+<button onclick="readPndt()">PNDT 인식</button>
+<div id="pResult" class="result wait">대기 중</div><pre id="pRaw"></pre></div>
+
+<div class="card"><b>③ 최종 비교</b>
+<button onclick="compareLabels()">두 라벨 비교</button>
+<div id="finalResult" class="result wait">두 라벨을 먼저 인식하세요.</div></div>
+
+<div class="card small">PNDT 수량은 <b>납품수량</b> 뒤의 숫자를 최우선으로 찾고, EA를 검증합니다.<br>
+GLOVIS 품번은 OCR의 S/5 혼동을 보정합니다.</div>
+
+<script>
+let G={part:"",qty:""},P={part:"",qty:""};
+
+function norm(s){return (s||"").toUpperCase().replace(/[–—−]/g,"-").replace(/\s+/g,"");}
+
+function fixPart(s){
+ let x=norm(s), m=x.match(/(\d{5})[-]?([A-Z0-9]{5})/);
+ if(!m)return "";
+ let tail=m[2];
+ // 23124-25020 -> 23124-2S020
+ if(/^2[5S]\d{3}$/.test(tail))tail="2S"+tail.slice(2);
+ return m[1]+"-"+tail;
+}
+function part(text){
+ let t=norm(text), a=t.match(/\d{5}[-]?[A-Z0-9]{5}/g)||[];
+ for(const z of a){let p=fixPart(z);if(p)return p;}
+ return fixPart(t);
+}
+function pndtQty(text){
+ let t=(text||"").replace(/[\r\n]+/g," ").replace(/\s+/g," ");
+ let i=t.indexOf("납품수량");
+ if(i>=0){
+   let a=t.slice(i+4,i+100);
+   let m=a.match(/[:：\s]*([0-9]{1,7})\s*E\s*A/i);
+   if(m)return m[1];
+   m=a.match(/[:：\s]*([0-9]{1,7})/);
+   if(m)return m[1];
+ }
+ let m=t.match(/([0-9]{1,7})\s*E\s*A/i);
+ return m?m[1]:"";
+}
+function genericQty(text){
+ let m=(text||"").match(/([0-9]{1,7})\s*E\s*A/i);
+ return m?m[1]:"";
+}
+async function ocr(file,lang){
+ const r=await Tesseract.recognize(file,lang,{logger:x=>console.log(x)});
+ return r.data.text;
+}
+function box(id,msg,c){let e=document.getElementById(id);e.className="result "+c;e.innerHTML=msg;}
+
+async function readGlovis(){
+ let f=document.getElementById("glovisFile").files[0];if(!f)return alert("GLOVIS 사진을 선택하세요.");
+ box("gResult","인식 중…","wait");
+ try{let raw=await ocr(f,"eng");G={part:part(raw),qty:genericQty(raw)};
+ document.getElementById("gRaw").textContent=raw;
+ box("gResult","품번: <b>"+(G.part||"인식 실패")+"</b><br>수량: <b>"+(G.qty?G.qty+" EA":"인식 실패")+"</b>",G.part&&G.qty?"ok":"ng");
+ }catch(e){box("gResult","GLOVIS 인식 오류","ng");}}
+async function readPndt(){
+ let f=document.getElementById("pndtFile").files[0];if(!f)return alert("PNDT 사진을 선택하세요.");
+ box("pResult","인식 중…","wait");
+ try{let raw=await ocr(f,"kor+eng");P={part:part(raw),qty:pndtQty(raw)};
+ document.getElementById("pRaw").textContent=raw;
+ box("pResult","품번: <b>"+(P.part||"인식 실패")+"</b><br>납품수량: <b>"+(P.qty?P.qty+" EA":"인식 실패")+"</b>",P.part&&P.qty?"ok":"ng");
+ }catch(e){box("pResult","PNDT 인식 오류","ng");}}
+function compareLabels(){
+ if(!G.part||!G.qty||!P.part||!P.qty){box("finalResult","🔴 CHECK<br>품번과 수량을 모두 인식해야 합니다.","ng");return;}
+ let a=G.part===P.part,b=String(G.qty)===String(P.qty);
+ box("finalResult",a&&b?"🟢 LABEL MATCH<br>품번 일치 / 수량 일치":"🔴 LABEL MISMATCH<br>품번: "+(a?"일치":"불일치")+"<br>수량: "+(b?"일치":"불일치"),a&&b?"ok":"ng");
+}
+</script></body></html>
