@@ -1,163 +1,207 @@
 <!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HMMA Label Check v3.4</title>
+<title>HMMA Label Check v4.0 (Enhanced Precision)</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
-body{font-family:Arial,sans-serif;max-width:720px;margin:auto;padding:18px;background:#f5f6f8}
-.card{background:#fff;padding:16px;margin:12px 0;border-radius:12px;box-shadow:0 2px 8px #0001}
-button{padding:12px 16px;border:0;border-radius:8px;background:#222;color:#fff;font-size:16px;margin:4px;cursor:pointer}
-.btn-cam{background:#0056b3;font-weight:bold}
+body{font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:720px;margin:auto;padding:18px;background:#f0f2f5;color:#333}
+.card{background:#fff;padding:20px;margin:12px 0;border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.btn-cam{width:100%;padding:14px;border:0;border-radius:10px;background:#0066ff;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px}
+.btn-cam:active{background:#0052cc}
+.btn-compare{width:100%;padding:16px;border:0;border-radius:10px;background:#222;color:#fff;font-size:18px;font-weight:bold;cursor:pointer}
 input[type="file"]{display:none}
-.result{padding:14px;border-radius:8px;margin-top:10px;font-size:18px;font-weight:bold}
-.ok{background:#dff5e5;color:#08752b}.ng{background:#ffe2e2;color:#a40000}.wait{background:#eee}
-pre{white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:150px;overflow-y:auto;background:#fafafa;padding:8px;border:1px solid #ddd}
-.small{font-size:12px;color:#666}
+.result{padding:14px;border-radius:8px;margin-top:10px;font-size:17px;font-weight:bold;line-height:1.5}
+.ok{background:#e6f4ea;color:#137333;border:1px solid #ceead6}
+.ng{background:#fce8e6;color:#c5221f;border:1px solid #fad2cf}
+.wait{background:#f1f3f4;color:#5f6368}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:120px;overflow-y:auto;background:#fafafa;padding:8px;border:1px solid #eee;margin-top:8px}
 </style></head><body>
-<h1>HMMA Label Check v3.4</h1>
 
-<div class="card"><b>① GLOVIS 식별표</b><br>
-<button class="btn-cam" onclick="document.getElementById('glovisFile').click()">📷 GLOVIS 사진 촬영</button>
-<input id="glovisFile" type="file" accept="image/*" capture="environment" onchange="readGlovis()">
-<div id="gResult" class="result wait">대기 중</div><pre id="gRaw"></pre></div>
+<h2>HMMA 식별표 검수 v4.0</h2>
 
-<div class="card"><b>② PNDT 식별표</b><br>
-<button class="btn-cam" onclick="document.getElementById('pndtFile').click()">📷 PNDT 사진 촬영</button>
-<input id="pndtFile" type="file" accept="image/*" capture="environment" onchange="readPndt()">
-<div id="pResult" class="result wait">대기 중</div><pre id="pRaw"></pre></div>
+<div class="card">
+  <b>① GLOVIS 식별표</b><br><br>
+  <button class="btn-cam" onclick="document.getElementById('glovisFile').click()">📷 GLOVIS 촬영 / 이미지 선택</button>
+  <input id="glovisFile" type="file" accept="image/*" capture="environment" onchange="processLabel('glovis')">
+  <div id="gResult" class="result wait">대기 중</div>
+  <pre id="gRaw"></pre>
+</div>
 
-<div class="card"><b>③ 최종 비교</b>
-<button onclick="compareLabels()">두 라벨 비교</button>
-<div id="finalResult" class="result wait">두 라벨을 먼저 인식하세요.</div></div>
+<div class="card">
+  <b>② PNDT 식별표</b><br><br>
+  <button class="btn-cam" onclick="document.getElementById('pndtFile').click()">📷 PNDT 촬영 / 이미지 선택</button>
+  <input id="pndtFile" type="file" accept="image/*" capture="environment" onchange="processLabel('pndt')">
+  <div id="pResult" class="result wait">대기 중</div>
+  <pre id="pRaw"></pre>
+</div>
 
-<div class="card small">버튼을 누르면 바로 스마트폰 카메라 촬영 모드로 연결됩니다.</div>
+<div class="card">
+  <button class="btn-compare" onclick="compareLabels()">🔍 두 식별표 비교하기</button>
+  <div id="finalResult" class="result wait">두 식별표를 먼저 인식하세요.</div>
+</div>
 
 <script>
-let G={part:"",qty:""},P={part:"",qty:""};
+let G = { part: "", qty: "" };
+let P = { part: "", qty: "" };
 
-// 세로 이미지 자동 90도 회전
+// Canvas 기반 이미지 전처리 (흑백 명암 대비 극대화)
 function preprocessImage(file) {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (img.height > img.width) {
-        canvas.width = img.height;
-        canvas.height = img.width;
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((90 * Math.PI) / 180);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-      } else {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-      }
-      resolve(canvas.toDataURL('image/jpeg'));
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 세로 촬영 시 자동 회전
+        let width = img.width;
+        let height = img.height;
+        let rotate = false;
+
+        if (height > width) {
+          rotate = true;
+          canvas.width = height;
+          canvas.height = width;
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((90 * Math.PI) / 180);
+          ctx.drawImage(img, -width / 2, -height / 2);
+        } else {
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0);
+        }
+
+        // 이미지 선명화 (Grayscale 및 대비 증가)
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          let avg = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          // 이진화 (Thresholding) 처리로 글씨 선명화
+          let v = avg < 140 ? 0 : 255;
+          d[i] = d[i + 1] = d[i + 2] = v;
+        }
+        ctx.putImageData(imgData, 0, 0);
+
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = e.target.result;
     };
-    img.src = URL.createObjectURL(file);
+    reader.readAsDataURL(file);
   });
 }
 
-function norm(s){ return (s||"").toUpperCase().replace(/[–—−_]/g,"-"); }
+// 텍스트 보정 및 파싱 함수
+function parsePartNumber(text) {
+  if (!text) return "";
+  let clean = text.toUpperCase().replace(/[^A-Z0-9-]/g, ' ');
 
-// 현대/기아 부품번호 추출 (예: 23124-2S120)
-function extractPartNumber(text) {
-  let cleaned = norm(text);
-  
-  // 1. 하이픈이 포함된 패턴 (예: 23124-2S120)
-  let m1 = cleaned.match(/\b\d{5}\s*-\s*[A-Z0-9]{5}\b/g);
-  if (m1) {
-    let raw = m1[0].replace(/\s+/g, '');
-    let parts = raw.split('-');
-    let head = parts[0].replace(/O/g, '0');
-    let tail = parts[1].replace(/O/g, '0');
-    if (/^2[5]\d{3}$/.test(tail)) tail = "2S" + tail.slice(2);
+  // 패턴 1: 5자리-5자리 (예: 23124-2S120)
+  let match = clean.match(/(\d{5})\s*[-_\s]\s*([A-Z0-9]{5})/);
+  if (match) {
+    let head = match[1];
+    let tail = match[2];
+    // 알파벳/숫자 혼동 오인식 교정
+    tail = tail.replace(/^25/, '2S').replace(/^28/, '2S');
     return head + "-" + tail;
   }
 
-  // 2. 하이픈 없이 붙어있는 10자리 패턴
-  let m2 = cleaned.match(/\b\d{5}[A-Z0-9]{5}\b/g);
-  if (m2) {
-    let raw = m2[0];
-    let head = raw.slice(0, 5).replace(/O/g, '0');
-    let tail = raw.slice(5, 10).replace(/O/g, '0');
-    if (/^2[5]\d{3}$/.test(tail)) tail = "2S" + tail.slice(2);
+  // 패턴 2: 하이픈 없이 붙어있는 10자리
+  let match2 = clean.match(/(\d{5})([A-Z0-9]{5})/);
+  if (match2) {
+    let head = match2[1];
+    let tail = match2[2];
+    tail = tail.replace(/^25/, '2S').replace(/^28/, '2S');
     return head + "-" + tail;
   }
 
   return "";
 }
 
-// 수량 추출 (PNDT 및 GLOVIS 공통 대응)
-function extractQty(text) {
-  let cleanText = norm(text);
+function parseQuantity(text) {
+  if (!text) return "";
+  let clean = text.toUpperCase();
 
-  // 1. '240 EA' 단독 표기 패턴 최우선
-  let m1 = cleanText.match(/(\d{1,5})\s*E\s*A/i);
-  if (m1) return m1[1];
+  // 1. 숫자 + EA 패턴
+  let match = clean.match(/(\d{1,5})\s*E\s*A/);
+  if (match) return match[1];
 
-  // 2. GLOVIS 'Quantity 240' 라인 패턴
-  let m2 = cleanText.match(/(?:QUANTITY|QTY|Q'TY)[\s:：]*(\d{1,5})/i);
-  if (m2) return m2[1];
+  // 2. QUANTITY / QTY / 수량 뒤의 숫자
+  let match2 = clean.match(/(?:QUANTITY|QTY|수량|납품수량)[\s:：]*(\d{1,5})/);
+  if (match2) return match2[1];
 
-  // 3. PNDT '납품수량 240' 라인 패턴
-  let m3 = cleanText.match(/(?:납품\s*수량|수량)[\s:：]*(\d{1,5})/i);
-  if (m3) return m3[1];
+  // 3. 단독 3자리~4자리 숫자 중 240 같은 전형적인 수량 추출
+  let numbers = clean.match(/\b\d{2,4}\b/g);
+  if (numbers) {
+    for (let num of numbers) {
+      if (parseInt(num) > 0 && parseInt(num) < 5000) {
+        return num;
+      }
+    }
+  }
 
   return "";
 }
 
-async function ocr(file, lang){
-  const processedImg = await preprocessImage(file);
-  // 화이트리스트 제거하여 OCR 정상 동작 보장
-  const r = await Tesseract.recognize(processedImg, lang, {
-    logger: x => console.log(x)
-  });
-  return r.data.text;
-}
+async function processLabel(type) {
+  const fileInput = document.getElementById(type + 'File');
+  const resultDiv = document.getElementById(type === 'glovis' ? 'gResult' : 'pResult');
+  const rawPre = document.getElementById(type === 'glovis' ? 'gRaw' : 'pRaw');
 
-function box(id, msg, c){
-  let e = document.getElementById(id);
-  e.className = "result " + c;
-  e.innerHTML = msg;
-}
+  if (!fileInput.files[0]) return;
 
-async function readGlovis(){
-  let f = document.getElementById("glovisFile").files[0];
-  if(!f) return;
-  box("gResult", "GLOVIS 식별표 분석 중…", "wait");
+  resultDiv.className = "result wait";
+  resultDiv.innerHTML = "🔍 이미지 인식 및 보정 중…";
+
   try {
-    let raw = await ocr(f, "eng");
-    G = { part: extractPartNumber(raw), qty: extractQty(raw) };
-    document.getElementById("gRaw").textContent = raw;
-    box("gResult", "품번: <b>" + (G.part || "인식 실패") + "</b><br>수량: <b>" + (G.qty ? G.qty + " EA" : "인식 실패") + "</b>", G.part && G.qty ? "ok" : "ng");
-  } catch(e) {
-    box("gResult", "GLOVIS 인식 오류", "ng");
+    const processedImageData = await preprocessImage(fileInput.files[0]);
+    const lang = type === 'glovis' ? 'eng' : 'kor+eng';
+    
+    const worker = await Tesseract.createWorker(lang);
+    const ret = await worker.recognize(processedImageData);
+    await worker.terminate();
+
+    const rawText = ret.data.text;
+    rawPre.textContent = rawText;
+
+    const part = parsePartNumber(rawText);
+    const qty = parseQuantity(rawText);
+
+    if (type === 'glovis') {
+      G = { part, qty };
+      resultDiv.innerHTML = `품번: <b>${part || "인식 실패"}</b><br>수량: <b>${qty ? qty + " EA" : "인식 실패"}</b>`;
+      resultDiv.className = "result " + (part && qty ? "ok" : "ng");
+    } else {
+      P = { part, qty };
+      resultDiv.innerHTML = `품번: <b>${part || "인식 실패"}</b><br>납품수량: <b>${qty ? qty + " EA" : "인식 실패"}</b>`;
+      resultDiv.className = "result " + (part && qty ? "ok" : "ng");
+    }
+  } catch (err) {
+    resultDiv.className = "result ng";
+    resultDiv.innerHTML = "❌ 인식 오류 발생";
+    console.error(err);
   }
 }
 
-async function readPndt(){
-  let f = document.getElementById("pndtFile").files[0];
-  if(!f) return;
-  box("pResult", "PNDT 식별표 분석 중…", "wait");
-  try {
-    let raw = await ocr(f, "kor+eng");
-    P = { part: extractPartNumber(raw), qty: extractQty(raw) };
-    document.getElementById("pRaw").textContent = raw;
-    box("pResult", "품번: <b>" + (P.part || "인식 실패") + "</b><br>납품수량: <b>" + (P.qty ? P.qty + " EA" : "인식 실패") + "</b>", P.part && P.qty ? "ok" : "ng");
-  } catch(e) {
-    box("pResult", "PNDT 인식 오류", "ng");
-  }
-}
-
-function compareLabels(){
-  if(!G.part || !G.qty || !P.part || !P.qty){
-    box("finalResult", "🔴 CHECK<br>두 라벨의 품번과 수량을 먼저 모두 인식해야 합니다.", "ng");
+function compareLabels() {
+  const finalDiv = document.getElementById("finalResult");
+  if (!G.part || !G.qty || !P.part || !P.qty) {
+    finalDiv.className = "result ng";
+    finalDiv.innerHTML = "🔴 CHECK<br>두 식별표의 품번과 수량을 모두 읽어와야 비교할 수 있습니다.";
     return;
   }
-  let a = G.part === P.part;
-  let b = String(G.qty) === String(P.qty);
-  box("finalResult", a && b ? "🟢 LABEL MATCH<br>품번 일치 / 수량 일치" : "🔴 LABEL MISMATCH<br>품번: " + (a ? "일치" : "불일치") + "<br>수량: " + (b ? "일치" : "불일치"), a && b ? "ok" : "ng");
+
+  const isPartMatch = G.part === P.part;
+  const isQtyMatch = String(G.qty) === String(P.qty);
+
+  if (isPartMatch && isQtyMatch) {
+    finalDiv.className = "result ok";
+    finalDiv.innerHTML = "🟢 LABEL MATCH<br>품번 일치 / 수량 일치";
+  } else {
+    finalDiv.className = "result ng";
+    finalDiv.innerHTML = `🔴 LABEL MISMATCH<br>품번: ${isPartMatch ? "일치" : "불일치(" + G.part + " vs " + P.part + ")"}<br>수량: ${isQtyMatch ? "일치" : "불일치(" + G.qty + " vs " + P.qty + ")"}`;
+  }
 }
-</script></body></html>
+</script>
+</body>
+</html>
