@@ -3,1328 +3,531 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HMMA GLOVIS Label Check v6</title>
 
-<title>HMMA GLOVIS Label Check v5</title>
-
-<!-- QR / Barcode -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-<!-- OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #f3f5f7;
-    font-family: Arial, "Noto Sans KR", sans-serif;
-    color: #17202a;
-}
-
-.container {
-    max-width: 700px;
-    margin: auto;
-    padding: 18px;
-}
-
-.title {
-    font-size: 26px;
-    font-weight: 800;
-    margin-bottom: 5px;
-}
-
-.subtitle {
-    color: #66727d;
-    font-size: 14px;
-    margin-bottom: 18px;
-}
-
-.card {
-    background: white;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 14px;
-    box-shadow: 0 3px 15px rgba(0,0,0,0.08);
-}
-
-h2 {
-    font-size: 18px;
-    margin-top: 0;
-}
-
-button {
-    width: 100%;
-    border: none;
-    border-radius: 12px;
-    padding: 15px;
-    margin-top: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.mainBtn {
-    background: #17202a;
-    color: white;
-}
-
-.resetBtn {
-    background: #e8edf1;
-    color: #17202a;
-}
-
-input[type=file] {
-    display: none;
-}
-
-.status {
-    margin-top: 12px;
-    padding: 13px;
-    border-radius: 10px;
-    background: #eef2f5;
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: pre-line;
-}
-
-.resultGrid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-
-.resultBox {
-    border: 1px solid #dce2e6;
-    border-radius: 12px;
-    padding: 14px;
-}
-
-.resultBox.ok {
-    background: #eaf8ee;
-    border-color: #b7e2c2;
-}
-
-.resultBox.fail {
-    background: #fff0f0;
-    border-color: #edb5b5;
-}
-
-.label {
-    font-size: 12px;
-    color: #687580;
-}
-
-.value {
-    margin-top: 5px;
-    font-size: 22px;
-    font-weight: 800;
-    word-break: break-all;
-}
-
-.raw {
-    background: #f5f6f7;
-    border-radius: 10px;
-    padding: 12px;
-    margin-top: 12px;
-    font-size: 12px;
-    line-height: 1.5;
-    word-break: break-all;
-}
-
-.note {
-    color: #66727d;
-    font-size: 13px;
-    line-height: 1.6;
-}
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f7;font-family:Arial,"Noto Sans KR",sans-serif;color:#17202a}
+.container{max-width:720px;margin:auto;padding:18px}
+.title{font-size:25px;font-weight:800;margin-bottom:5px}
+.subtitle{font-size:13px;color:#66727d;margin-bottom:16px}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 3px 15px rgba(0,0,0,.08)}
+h2{font-size:18px;margin:0 0 12px}
+input[type=file]{display:none}
+button{width:100%;border:0;border-radius:12px;padding:15px;margin-top:8px;font-size:16px;font-weight:700}
+.mainBtn{background:#17202a;color:#fff}
+.resetBtn{background:#e8edf1;color:#17202a}
+.retryBtn{background:#edf3ff;color:#1d4ed8}
+.status{margin-top:12px;padding:13px;border-radius:10px;background:#eef2f5;white-space:pre-line;font-size:14px;line-height:1.5}
+.preview{width:100%;max-height:360px;object-fit:contain;border-radius:10px;margin-top:12px;background:#111}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.box{border:1px solid #dce2e6;border-radius:12px;padding:14px}
+.ok{background:#eaf8ee;border-color:#b7e2c2}
+.warn{background:#fff8e6;border-color:#efd38b}
+.fail{background:#fff0f0;border-color:#edb5b5}
+.label{font-size:12px;color:#687580}
+.value{margin-top:5px;font-size:22px;font-weight:800;word-break:break-all}
+.raw{background:#f5f6f7;border-radius:10px;padding:12px;margin-top:12px;font-size:12px;line-height:1.5;word-break:break-all}
+.small{font-size:12px;color:#66727d;line-height:1.6}
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
-    <div class="title">
-        HMMA GLOVIS Label Check v5
-    </div>
+<div class="title">HMMA GLOVIS Label Check v6</div>
+<div class="subtitle">GLOVIS 전용 테스트 · QR + 전체 OCR + 품번/수량 보정</div>
 
-    <div class="subtitle">
-        QR 우선 인식 → 품번/수량 자동 추출 → OCR 보조
-    </div>
+<div class="card">
+<h2>① GLOVIS 식별표 촬영</h2>
 
-    <!-- 촬영 -->
-    <div class="card">
+<input id="photo" type="file" accept="image/*" capture="environment">
 
-        <h2>① GLOVIS 식별표 촬영</h2>
+<button class="mainBtn" onclick="document.getElementById('photo').click()">
+📷 식별표 촬영 / 사진 선택
+</button>
 
-        <input
-            id="photo"
-            type="file"
-            accept="image/*"
-            capture="environment"
-        >
+<button class="retryBtn" id="retryBtn" style="display:none" onclick="processCurrentPhoto()">
+🔄 같은 사진 다시 인식
+</button>
 
-        <button
-            class="mainBtn"
-            onclick="document.getElementById('photo').click()"
-        >
-            📷 식별표 촬영 / 사진 선택
-        </button>
+<button class="resetBtn" onclick="resetApp()">초기화</button>
 
-        <button
-            class="resetBtn"
-            onclick="resetApp()"
-        >
-            초기화
-        </button>
+<div id="status" class="status">사진을 촬영하면 QR을 먼저 시도하고, 실패하면 전체 OCR로 Part No와 Quantity를 읽습니다.</div>
+<img id="preview" class="preview" style="display:none">
+</div>
 
-        <div id="status" class="status">
-            사진을 촬영하면 GLOVIS QR 코드를 먼저 검색합니다.
-        </div>
+<div class="card" id="resultCard" style="display:none">
+<h2>② GLOVIS 인식 결과</h2>
 
-    </div>
+<div class="grid">
+<div id="partBox" class="box">
+<div class="label">Part No</div>
+<div id="partResult" class="value">-</div>
+</div>
 
+<div id="qtyBox" class="box">
+<div class="label">Quantity</div>
+<div id="qtyResult" class="value">-</div>
+</div>
+</div>
 
-    <!-- 결과 -->
-    <div
-        id="resultCard"
-        class="card"
-        style="display:none"
-    >
+<div class="label" style="margin-top:15px">인식 방법</div>
+<div id="methodResult" class="raw">-</div>
 
-        <h2>② GLOVIS 인식 결과</h2>
+<div class="label" style="margin-top:10px">QR 원문</div>
+<div id="qrResult" class="raw">QR 미인식</div>
 
-        <div class="resultGrid">
+<div class="label" style="margin-top:10px">OCR 원문</div>
+<div id="ocrResult" class="raw">OCR 미실행</div>
+</div>
 
-            <div id="partBox" class="resultBox">
-                <div class="label">
-                    Part No
-                </div>
-
-                <div id="partResult" class="value">
-                    -
-                </div>
-            </div>
-
-
-            <div id="qtyBox" class="resultBox">
-                <div class="label">
-                    Quantity
-                </div>
-
-                <div id="qtyResult" class="value">
-                    -
-                </div>
-            </div>
-
-        </div>
-
-
-        <div class="label" style="margin-top:15px;">
-            QR 원문
-        </div>
-
-        <div id="rawResult" class="raw">
-            -
-        </div>
-
-    </div>
-
-
-    <!-- 설명 -->
-    <div class="card">
-
-        <h2>현재 인식 방식</h2>
-
-        <div class="note">
-
-            ① 사진에서 QR 코드를 검색합니다.<br>
-
-            ② QR 원문에서 GLOVIS 품번 패턴을 찾습니다.<br>
-
-            ③ 10자리 내부 품번코드를 고객사 Part No로 변환합니다.<br>
-
-            ④ 이어지는 6자리 숫자를 Quantity로 인식합니다.<br>
-
-            ⑤ QR 인식 실패 시 상단 Part No / Quantity를 OCR로 보조 인식합니다.
-
-            <br><br>
-
-            <b>예시</b><br>
-
-            QR :
-            CHB3TQ8CV26231242S1200002409269S32GY00SEF9
-
-            <br><br>
-
-            → Part No :
-            <b>23124-2S120</b>
-
-            <br>
-
-            → Quantity :
-            <b>240 EA</b>
-
-        </div>
-
-    </div>
+<div class="card">
+<h2>현장 촬영 요령</h2>
+<div class="small">
+① 식별표가 화면의 60~80% 정도 차도록 가까이 촬영<br>
+② 가능하면 식별표를 정면에서 촬영<br>
+③ QR에 반사광이 생기지 않게 촬영<br>
+④ Part No와 Quantity가 흐리지 않게 한 번 고정 후 촬영<br>
+⑤ 사진 전체를 OCR하므로 기존 버전보다 위치 변화에 강합니다.
+</div>
+</div>
 
 </div>
 
-
 <script>
-
-/* =====================================================
-   기본 함수
-===================================================== */
+let currentDataUrl = null;
 
 const $ = id => document.getElementById(id);
 
-
-function setStatus(message) {
-    $("status").textContent = message;
+function setStatus(msg){
+    $("status").textContent = msg;
 }
 
-
-function normalize(text) {
-
-    return (text || "")
-        .replace(/\s+/g, "")
-        .toUpperCase();
-
+function normalize(s){
+    return (s || "")
+        .toUpperCase()
+        .replace(/[|]/g,"")
+        .replace(/\r/g," ")
+        .replace(/\n/g," ");
 }
 
+/* -------------------------------------------------------
+   Part No 보정
+   실제 GLOVIS 형식:
+   23124-2S120
+   OCR이 23124-25120 등으로 읽는 경우 보정
+------------------------------------------------------- */
+function normalizePart(raw){
+    if(!raw) return null;
 
-/* =====================================================
-   Part No 변환
-===================================================== */
+    let s = normalize(raw)
+        .replace(/\s+/g,"")
+        .replace(/[^A-Z0-9-]/g,"");
 
-function convertPartCode(code) {
+    // 정상 형식
+    let m = s.match(/(\d{5})-?2([A-Z0-9])(\d{3})/);
+    if(m){
+        let mid = m[2];
 
-    if (!code) {
-        return null;
+        // 이 위치의 S는 OCR에서 5로 자주 인식됨
+        if(mid === "5") mid = "S";
+
+        return `${m[1]}-2${mid}${m[3]}`;
     }
 
-    code = normalize(code);
+    // 231242S120처럼 하이픈이 사라진 경우
+    m = s.match(/(\d{5})2([A-Z0-9])(\d{3})/);
+    if(m){
+        let mid = m[2];
+        if(mid === "5") mid = "S";
+        return `${m[1]}-2${mid}${m[3]}`;
+    }
 
-    code = code.replace(/[^A-Z0-9]/g, "");
-
-    /*
-        GLOVIS 내부 품번
-
-        예:
-        231242S120
-
-        ↓
-
-        23124-2S120
-    */
-
-    if (/^\d{5}2[A-Z0-9]\d{3}$/.test(code)) {
-
-        return (
-            code.substring(0, 5)
-            + "-"
-            + code.substring(5)
-        );
-
+    // 23124-25120처럼 OCR이 S를 5로 읽은 전형적인 경우
+    m = s.match(/(\d{5})-?25(\d{3})/);
+    if(m){
+        return `${m[1]}-2S${m[2]}`;
     }
 
     return null;
 }
 
+/* -------------------------------------------------------
+   Quantity 보정
+------------------------------------------------------- */
+function normalizeQty(raw){
+    if(!raw) return null;
 
-/* =====================================================
-   QR 데이터 분석
-===================================================== */
+    let t = normalize(raw);
 
-function parseGLOVISQR(raw) {
-
-    if (!raw) {
-        return null;
+    // Quantity 바로 뒤 숫자
+    let m = t.match(/QUANTITY[^0-9]{0,12}(\d{1,5})/);
+    if(m){
+        let n = parseInt(m[1],10);
+        if(n > 0 && n <= 99999) return n;
     }
 
-    const text = normalize(raw);
+    // OCR이 "Quantitv" 등으로 읽을 때
+    m = t.match(/QUANT[A-Z0-9]{0,4}[^0-9]{0,12}(\d{1,5})/);
+    if(m){
+        let n = parseInt(m[1],10);
+        if(n > 0 && n <= 99999) return n;
+    }
+
+    return null;
+}
+
+/* -------------------------------------------------------
+   QR 원문에서 Part + Quantity 추출
+------------------------------------------------------- */
+function parseQR(raw){
+    if(!raw) return null;
+
+    let t = normalize(raw).replace(/\s+/g,"");
 
     /*
-        중요
+      실제 예:
+      CHB3TQ8CV26231242S1200002409269S3B8400SEF9
 
-        앞부분 길이를 고정하지 않습니다.
-
-        QR 안에서
-
-        [5자리 숫자]
-        +
-        [2]
-        +
-        [영문/숫자 1자리]
-        +
-        [3자리]
-        +
-        [6자리 수량]
-
-        패턴을 찾습니다.
-
-        예:
-
-        231242S120000240
-
-        ↓
-
-        231242S120
-        000240
+      필요한 부분:
+      231242S120 + 000240
     */
 
-    const pattern =
-        /(\d{5}2[A-Z0-9]\d{3})(\d{6})/;
+    let m = t.match(/(\d{5}2[A-Z0-9]\d{3})(\d{6})/);
 
-    const match = text.match(pattern);
+    if(!m) return null;
 
-    if (!match) {
+    let part = normalizePart(m[1]);
+    let qty = parseInt(m[2],10);
 
-        return null;
-
-    }
-
-    const internalPart = match[1];
-
-    const quantityText = match[2];
-
-    const part = convertPartCode(internalPart);
-
-    const quantity = parseInt(
-        quantityText,
-        10
-    );
-
-    if (!part || isNaN(quantity)) {
-
-        return null;
-
-    }
+    if(!part || isNaN(qty)) return null;
 
     return {
-
         part: part,
-
-        quantity: quantity,
-
+        qty: qty,
         raw: raw
-
     };
-
 }
 
+/* -------------------------------------------------------
+   BarcodeDetector
+------------------------------------------------------- */
+async function barcodeDetector(img){
+    if(!("BarcodeDetector" in window)) return null;
 
-/* =====================================================
-   QR 인식 - BarcodeDetector
-   Android Chrome 등 지원 브라우저
-===================================================== */
+    try{
+        const detector = new BarcodeDetector({formats:["qr_code"]});
+        const codes = await detector.detect(img);
 
-async function detectWithBarcodeDetector(img) {
-
-    if (!("BarcodeDetector" in window)) {
-
-        return null;
-
-    }
-
-    try {
-
-        const detector =
-            new BarcodeDetector({
-                formats: ["qr_code"]
-            });
-
-        const codes =
-            await detector.detect(img);
-
-        if (!codes || codes.length === 0) {
-
-            return null;
-
+        for(const c of codes){
+            const r = parseQR(c.rawValue);
+            if(r) return r;
         }
-
-        /*
-            QR이 여러 개일 수 있으므로
-            모든 QR을 확인합니다.
-        */
-
-        for (const code of codes) {
-
-            if (!code.rawValue) {
-                continue;
-            }
-
-            const parsed =
-                parseGLOVISQR(
-                    code.rawValue
-                );
-
-            if (parsed) {
-
-                return parsed;
-
-            }
-
-        }
-
-    } catch (error) {
-
-        console.log(
-            "BarcodeDetector error:",
-            error
-        );
-
+    }catch(e){
+        console.log("BarcodeDetector:",e);
     }
 
     return null;
 }
 
+/* -------------------------------------------------------
+   jsQR용 Canvas
+------------------------------------------------------- */
+function makeCanvas(img, scale, mode){
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
 
-/* =====================================================
-   Canvas 생성
-===================================================== */
+    const c = document.createElement("canvas");
+    c.width = Math.round(w * scale);
+    c.height = Math.round(h * scale);
 
-function createCanvas(
-    img,
-    cropX,
-    cropY,
-    cropW,
-    cropH,
-    scale,
-    mode
-) {
+    const ctx = c.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(img,0,0,c.width,c.height);
 
-    const width =
-        img.naturalWidth || img.width;
+    if(mode){
+        const d = ctx.getImageData(0,0,c.width,c.height);
+        const p = d.data;
 
-    const height =
-        img.naturalHeight || img.height;
+        for(let i=0;i<p.length;i+=4){
+            let g = 0.299*p[i] + 0.587*p[i+1] + 0.114*p[i+2];
 
-
-    const sx = width * cropX;
-    const sy = height * cropY;
-
-    const sw = width * cropW;
-    const sh = height * cropH;
-
-
-    const canvas =
-        document.createElement("canvas");
-
-
-    canvas.width =
-        Math.round(sw * scale);
-
-    canvas.height =
-        Math.round(sh * scale);
-
-
-    const ctx =
-        canvas.getContext(
-            "2d",
-            {
-                willReadFrequently: true
+            if(mode === "gray"){
+                p[i]=p[i+1]=p[i+2]=g;
+            }else if(mode === "contrast"){
+                g=(g-128)*2+128;
+                g=Math.max(0,Math.min(255,g));
+                p[i]=p[i+1]=p[i+2]=g;
             }
-        );
-
-
-    ctx.imageSmoothingEnabled = true;
-
-
-    ctx.drawImage(
-        img,
-        sx,
-        sy,
-        sw,
-        sh,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-
-    if (mode) {
-
-        const imageData =
-            ctx.getImageData(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-        const data =
-            imageData.data;
-
-
-        for (
-            let i = 0;
-            i < data.length;
-            i += 4
-        ) {
-
-            let gray =
-                0.299 * data[i]
-                +
-                0.587 * data[i + 1]
-                +
-                0.114 * data[i + 2];
-
-
-            if (mode === "gray") {
-
-                data[i] =
-                    data[i + 1] =
-                    data[i + 2] =
-                    gray;
-
-            }
-
-
-            if (mode === "contrast") {
-
-                gray =
-                    (gray - 128) * 2 + 128;
-
-                gray =
-                    Math.max(
-                        0,
-                        Math.min(
-                            255,
-                            gray
-                        )
-                    );
-
-
-                data[i] =
-                    data[i + 1] =
-                    data[i + 2] =
-                    gray;
-
-            }
-
         }
-
-
-        ctx.putImageData(
-            imageData,
-            0,
-            0
-        );
-
+        ctx.putImageData(d,0,0);
     }
 
-
-    return canvas;
-
+    return c;
 }
 
-
-/* =====================================================
-   jsQR로 QR 검색
-===================================================== */
-
-async function searchQRWithJSQR(img) {
+/* -------------------------------------------------------
+   QR 다중 시도
+------------------------------------------------------- */
+async function jsQRSearch(img){
 
     const variants = [
-
-        /*
-            ① 전체 이미지
-        */
-        {
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 1,
-            scale: 1.5
-        },
-
-        /*
-            ② QR이 있는 오른쪽 하단
-        */
-        {
-            x: 0.65,
-            y: 0.45,
-            w: 0.30,
-            h: 0.40,
-            scale: 3
-        },
-
-        /*
-            ③ QR 2개가 있는 영역
-        */
-        {
-            x: 0.55,
-            y: 0.40,
-            w: 0.40,
-            h: 0.45,
-            scale: 3,
-            mode: "gray"
-        },
-
-        /*
-            ④ 오른쪽 하단 확대
-        */
-        {
-            x: 0.60,
-            y: 0.50,
-            w: 0.35,
-            h: 0.35,
-            scale: 4,
-            mode: "contrast"
-        },
-
-        /*
-            ⑤ 전체 이미지 확대
-        */
-        {
-            x: 0,
-            y: 0,
-            w: 1,
-            h: 1,
-            scale: 2,
-            mode: "gray"
-        }
-
+        [1.0,null],
+        [1.5,null],
+        [2.0,null],
+        [2.0,"gray"],
+        [2.0,"contrast"]
     ];
 
-
-    for (
-        let i = 0;
-        i < variants.length;
-        i++
-    ) {
+    for(let i=0;i<variants.length;i++){
 
         setStatus(
-            "① GLOVIS QR 검색 중...\n"
-            +
-            "검색 단계 "
-            +
-            (i + 1)
-            +
-            " / "
-            +
-            variants.length
+            "① QR 인식 중...\n" +
+            `검색 ${i+1}/${variants.length}`
         );
 
+        const [scale,mode] = variants[i];
+        const c = makeCanvas(img,scale,mode);
+        const ctx = c.getContext("2d",{willReadFrequently:true});
+        const d = ctx.getImageData(0,0,c.width,c.height);
 
-        const v =
-            variants[i];
+        const result = jsQR(
+            d.data,
+            d.width,
+            d.height,
+            {inversionAttempts:"attemptBoth"}
+        );
 
-
-        const canvas =
-            createCanvas(
-                img,
-                v.x,
-                v.y,
-                v.w,
-                v.h,
-                v.scale,
-                v.mode
-            );
-
-
-        const ctx =
-            canvas.getContext(
-                "2d",
-                {
-                    willReadFrequently: true
-                }
-            );
-
-
-        const imageData =
-            ctx.getImageData(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-
-        const result =
-            jsQR(
-                imageData.data,
-                imageData.width,
-                imageData.height,
-                {
-                    inversionAttempts:
-                        "attemptBoth"
-                }
-            );
-
-
-        if (
-            result &&
-            result.data
-        ) {
-
-            console.log(
-                "QR detected:",
-                result.data
-            );
-
-
-            const parsed =
-                parseGLOVISQR(
-                    result.data
-                );
-
-
-            if (parsed) {
-
-                return parsed;
-
-            }
-
+        if(result && result.data){
+            const parsed = parseQR(result.data);
+            if(parsed) return parsed;
         }
-
     }
-
 
     return null;
 }
 
+/* -------------------------------------------------------
+   OCR
+   전체 이미지에서 먼저 읽고, 그 결과를 보정
+------------------------------------------------------- */
+async function runOCR(img){
 
-/* =====================================================
-   OCR 보조
-===================================================== */
+    setStatus("② QR 실패 → 전체 이미지 OCR 진행 중...\n잠시 기다려 주세요.");
 
-function extractOCR(text) {
+    const c = document.createElement("canvas");
 
-    const t =
-        (text || "")
-        .toUpperCase()
-        .replace(/\r/g, " ")
-        .replace(/\n/g, " ");
-
-
-    let part = null;
-
-    let quantity = null;
-
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
 
     /*
-        Part No
-
-        OCR이
-
-        23124-2S120
-        23124 2S120
-        23124-25020
-
-        등으로 읽는 경우를 고려
+      너무 작은 이미지는 확대,
+      너무 큰 이미지는 적당히 축소
     */
+    const targetWidth = Math.min(2200, Math.max(1600,w));
+    const scale = targetWidth / w;
 
-    const partMatch =
-        t.match(
-            /(\d{5})[-\s]?([25S])[\s]?([A-Z0-9])(\d{3})/
-        );
+    c.width = Math.round(w*scale);
+    c.height = Math.round(h*scale);
 
-
-    if (partMatch) {
-
-        let middle =
-            partMatch[2];
-
-        /*
-            S 또는 5를
-            2S 구조의 일부로 보정
-        */
-
-        if (
-            middle === "5"
-            ||
-            middle === "S"
-        ) {
-
-            part =
-                partMatch[1]
-                +
-                "2"
-                +
-                middle
-                +
-                partMatch[3]
-                +
-                partMatch[4];
-
-            part =
-                convertPartCode(
-                    part
-                );
-
-        }
-
-    }
-
-
-    /*
-        Quantity
-
-        상단 Quantity 영역의
-        2~4자리 숫자를 찾습니다.
-    */
-
-    const numbers =
-        t.match(
-            /\b\d{2,4}\b/g
-        );
-
-
-    if (numbers && numbers.length) {
-
-        /*
-            일반적으로 240 같은
-            수량을 우선 사용
-        */
-
-        for (
-            const n of numbers
-        ) {
-
-            const value =
-                parseInt(
-                    n,
-                    10
-                );
-
-
-            if (
-                value >= 1
-                &&
-                value <= 9999
-            ) {
-
-                quantity =
-                    value;
-
-                break;
-
-            }
-
-        }
-
-    }
-
-
-    return {
-
-        part: part,
-
-        quantity: quantity
-
-    };
-
-}
-
-
-/* =====================================================
-   OCR 실행
-===================================================== */
-
-async function runOCR(img) {
-
-    setStatus(
-        "QR 인식 실패\n"
-        +
-        "② 상단 Part No / Quantity OCR 진행 중..."
-    );
-
-
-    const canvas =
-        document.createElement(
-            "canvas"
-        );
-
-
-    const width =
-        img.naturalWidth ||
-        img.width;
-
-
-    const height =
-        img.naturalHeight ||
-        img.height;
-
-
-    /*
-        식별표 상단 영역
-
-        Part No / Quantity가 있는
-        부분만 확대
-    */
-
-    const sx =
-        width * 0.15;
-
-    const sy =
-        height * 0.20;
-
-    const sw =
-        width * 0.75;
-
-    const sh =
-        height * 0.28;
-
-
-    canvas.width =
-        Math.round(sw * 3);
-
-    canvas.height =
-        Math.round(sh * 3);
-
-
-    const ctx =
-        canvas.getContext("2d");
-
-
+    const ctx = c.getContext("2d");
     ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img,0,0,c.width,c.height);
 
-
-    ctx.drawImage(
-        img,
-        sx,
-        sy,
-        sw,
-        sh,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-
-    const result =
-        await Tesseract.recognize(
-            canvas,
-            "eng",
-            {
-                logger: function(message) {
-
-                    if (
-                        message.status ===
-                        "recognizing text"
-                    ) {
-
-                        const progress =
-                            Math.round(
-                                message.progress
-                                * 100
-                            );
-
-
-                        setStatus(
-                            "② OCR 진행 중... "
-                            +
-                            progress
-                            +
-                            "%"
-                        );
-
-                    }
-
+    const result = await Tesseract.recognize(
+        c,
+        "eng",
+        {
+            logger: m => {
+                if(m.status === "recognizing text"){
+                    setStatus(
+                        "② OCR 진행 중... " +
+                        Math.round(m.progress*100) + "%"
+                    );
                 }
             }
-        );
-
-
-    console.log(
-        "OCR:",
-        result.data.text
+        }
     );
 
+    const text = result.data.text || "";
+
+    console.log("OCR RAW:",text);
+
+    let part = normalizePart(text);
+    let qty = normalizeQty(text);
+
+    /*
+      전체 OCR에서 Part No가
+      23124-25120으로 잡힌 경우
+      직접 검색해서 보정
+    */
+    if(!part){
+        const compact = normalize(text).replace(/\s+/g,"");
+        const pm = compact.match(/(\d{5})-?25(\d{3})/);
+        if(pm){
+            part = `${pm[1]}-2S${pm[2]}`;
+        }
+    }
 
     return {
-
-        ...extractOCR(
-            result.data.text
-        ),
-
-        raw:
-            result.data.text
-
+        part: part,
+        qty: qty,
+        raw: text
     };
-
 }
 
-
-/* =====================================================
+/* -------------------------------------------------------
    결과 표시
-===================================================== */
+------------------------------------------------------- */
+function showResult(part,qty,method,qrRaw,ocrRaw){
 
-function showResult(
-    part,
-    quantity,
-    raw
-) {
+    $("resultCard").style.display="block";
 
-    $("resultCard")
-        .style.display =
-        "block";
+    $("partResult").textContent =
+        part || "인식 실패";
 
+    $("qtyResult").textContent =
+        qty != null ? `${qty} EA` : "인식 실패";
 
-    $("partResult")
-        .textContent =
-        part ||
-        "인식 실패";
+    $("methodResult").textContent =
+        method || "-";
 
+    $("qrResult").textContent =
+        qrRaw || "QR 미인식";
 
-    $("qtyResult")
-        .textContent =
-        quantity != null
-        ?
-        quantity + " EA"
-        :
-        "인식 실패";
-
-
-    $("rawResult")
-        .textContent =
-        raw ||
-        "QR 원문 없음";
-
+    $("ocrResult").textContent =
+        ocrRaw || "OCR 미실행";
 
     $("partBox").className =
-        "resultBox "
-        +
-        (
-            part
-            ?
-            "ok"
-            :
-            "fail"
-        );
-
+        "box " + (part ? "ok" : "fail");
 
     $("qtyBox").className =
-        "resultBox "
-        +
-        (
-            quantity != null
-            ?
-            "ok"
-            :
-            "fail"
-        );
-
+        "box " + (qty != null ? "ok" : "fail");
 }
 
+/* -------------------------------------------------------
+   현재 사진 처리
+------------------------------------------------------- */
+async function processCurrentPhoto(){
 
-/* =====================================================
-   사진 처리
-===================================================== */
+    if(!currentDataUrl) return;
 
-$("photo")
-.addEventListener(
-    "change",
-    async function(event) {
+    $("resultCard").style.display="none";
 
-        const file =
-            event.target.files[0];
+    const img = new Image();
 
+    img.onload = async function(){
 
-        if (!file) {
+        let qr = null;
+
+        /*
+          1. BarcodeDetector
+        */
+        qr = await barcodeDetector(img);
+
+        /*
+          2. jsQR
+        */
+        if(!qr){
+            qr = await jsQRSearch(img);
+        }
+
+        if(qr){
+
+            showResult(
+                qr.part,
+                qr.qty,
+                "🟢 QR 인식 성공",
+                qr.raw,
+                null
+            );
+
+            setStatus(
+                "🟢 QR 인식 성공\n\n" +
+                `Part No : ${qr.part}\n` +
+                `Quantity : ${qr.qty} EA`
+            );
+
             return;
         }
 
+        /*
+          3. OCR
+        */
+        const ocr = await runOCR(img);
 
-        $("resultCard")
-            .style.display =
-            "none";
-
-
-        setStatus(
-            "사진을 불러오는 중..."
+        showResult(
+            ocr.part,
+            ocr.qty,
+            "🟡 OCR 보조 인식",
+            null,
+            ocr.raw
         );
 
-
-        const url =
-            URL.createObjectURL(
-                file
-            );
-
-
-        const img =
-            new Image();
-
-
-        img.onload =
-        async function() {
-
-            try {
-
-                /*
-                    1단계
-                    BarcodeDetector
-                */
-
-                setStatus(
-                    "① GLOVIS QR 검색 중..."
-                );
-
-
-                let result =
-                    await detectWithBarcodeDetector(
-                        img
-                    );
-
-
-                /*
-                    2단계
-                    jsQR
-                */
-
-                if (!result) {
-
-                    result =
-                        await searchQRWithJSQR(
-                            img
-                        );
-
-                }
-
-
-                /*
-                    QR 성공
-                */
-
-                if (result) {
-
-                    showResult(
-                        result.part,
-                        result.quantity,
-                        result.raw
-                    );
-
-
-                    setStatus(
-                        "🟢 QR 인식 성공\n\n"
-                        +
-                        "Part No : "
-                        +
-                        result.part
-                        +
-                        "\n"
-                        +
-                        "Quantity : "
-                        +
-                        result.quantity
-                        +
-                        " EA"
-                    );
-
-
-                    return;
-
-                }
-
-
-                /*
-                    QR 실패
-                    OCR 실행
-                */
-
-                const ocrResult =
-                    await runOCR(
-                        img
-                    );
-
-
-                showResult(
-                    ocrResult.part,
-                    ocrResult.quantity,
-                    ocrResult.raw
-                );
-
-
-                if (
-                    ocrResult.part
-                    &&
-                    ocrResult.quantity
-                    != null
-                ) {
-
-                    setStatus(
-                        "🟡 OCR 보조 인식 완료"
-                    );
-
-                } else {
-
-                    setStatus(
-                        "🔴 필요한 데이터를 인식하지 못했습니다."
-                        +
-                        "\n사진을 식별표에 가깝게 촬영해 주세요."
-                    );
-
-                }
-
-            }
-            catch(error) {
-
-                console.error(
-                    error
-                );
-
-
-                setStatus(
-                    "오류 발생\n"
-                    +
-                    error.message
-                );
-
-            }
-            finally {
-
-                URL.revokeObjectURL(
-                    url
-                );
-
-            }
-
-        };
-
-
-        img.onerror =
-        function() {
+        if(ocr.part && ocr.qty != null){
 
             setStatus(
-                "사진을 불러오지 못했습니다."
+                "🟡 OCR 인식 성공\n\n" +
+                `Part No : ${ocr.part}\n` +
+                `Quantity : ${ocr.qty} EA`
             );
 
-        };
+        }else{
 
+            setStatus(
+                "🔴 인식 실패\n\n" +
+                "Part No 또는 Quantity를 인식하지 못했습니다.\n" +
+                "식별표가 화면의 60~80%를 차지하도록 가까이 촬영해 주세요."
+            );
+        }
+    };
 
-        img.src = url;
-
-    }
-);
-
-
-/* =====================================================
-   초기화
-===================================================== */
-
-function resetApp() {
-
-    $("photo").value = "";
-
-    $("resultCard")
-        .style.display =
-        "none";
-
-
-    setStatus(
-        "사진을 촬영하면 GLOVIS QR 코드를 먼저 검색합니다."
-    );
-
+    img.src = currentDataUrl;
 }
 
+/* -------------------------------------------------------
+   사진 선택
+------------------------------------------------------- */
+$("photo").addEventListener("change",function(e){
+
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(ev){
+
+        currentDataUrl = ev.target.result;
+
+        $("preview").src = currentDataUrl;
+        $("preview").style.display="block";
+        $("retryBtn").style.display="block";
+
+        processCurrentPhoto();
+    };
+
+    reader.readAsDataURL(file);
+});
+
+/* -------------------------------------------------------
+   초기화
+------------------------------------------------------- */
+function resetApp(){
+
+    currentDataUrl = null;
+
+    $("photo").value="";
+    $("preview").style.display="none";
+    $("retryBtn").style.display="none";
+    $("resultCard").style.display="none";
+
+    setStatus(
+        "사진을 촬영하면 QR을 먼저 시도하고, 실패하면 전체 OCR로 Part No와 Quantity를 읽습니다."
+    );
+}
 </script>
 
 </body>
