@@ -1,370 +1,207 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>GLOVIS ↔ PNDT 식별표 검사</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <style>
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,"Noto Sans KR",sans-serif;background:#111;color:#fff}
-    .app{max-width:720px;margin:auto;min-height:100vh;background:#171717}
-    header{padding:16px 18px;background:#202020;position:sticky;top:0;z-index:10}
-    header h1{font-size:20px;margin:0 0 5px}
-    header p{font-size:13px;color:#bbb;margin:0}
-    .screen{display:none;padding:16px}
-    .screen.active{display:block}
-    .step{font-size:13px;color:#aaa;margin-bottom:8px}
-    .title{font-size:23px;font-weight:800;margin-bottom:12px}
-    .guide-wrap{position:relative;background:#000;border-radius:14px;overflow:hidden}
-    video{width:100%;display:block;aspect-ratio:3/4;object-fit:cover}
-    .guide{position:absolute;left:5%;right:5%;top:23%;height:54%;border:3px solid #00ff88;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.38)}
-    .guide:before{content:"식별표 전체를 초록 박스 안에 맞춰주세요";position:absolute;top:-34px;left:0;right:0;text-align:center;font-size:13px;color:#00ff88;font-weight:bold}
-    .guide small{position:absolute;left:10px;bottom:8px;background:rgba(0,0,0,.65);padding:5px 8px;border-radius:5px;color:#fff}
-    .hint{background:#242424;border-radius:10px;padding:12px;margin:14px 0;font-size:14px;line-height:1.5;color:#ddd}
-    button{width:100%;border:0;border-radius:12px;padding:15px 16px;font-size:17px;font-weight:800;cursor:pointer}
-    .primary{background:#00d879;color:#07130d}
-    .secondary{background:#333;color:#fff;margin-top:10px}
-    button:disabled{opacity:.45}
-    .result{background:#242424;border-radius:14px;padding:16px;margin-top:14px}
-    .row{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #3a3a3a}
-    .row:last-child{border-bottom:0}
-    .label{color:#aaa}.value{font-weight:800;text-align:right;word-break:break-all}
-    .ok{background:#063d28;border:2px solid #00d879;color:#8fffc4;text-align:center;padding:20px;border-radius:14px;margin-top:15px}
-    .ng{background:#4a1111;border:2px solid #ff5555;color:#ffb2b2;text-align:center;padding:20px;border-radius:14px;margin-top:15px}
-    .big{font-size:30px;font-weight:900;margin-bottom:6px}
-    .status{min-height:24px;margin:12px 0;color:#ddd;font-size:14px}
-    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #777;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:7px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    canvas{display:none}
-    .note{font-size:12px;color:#888;line-height:1.45;margin-top:12px}
-    .manual{display:none}
-    input{width:100%;padding:13px;border-radius:9px;border:1px solid #555;background:#111;color:#fff;font-size:18px}
-    .debug{font-size:11px;color:#777;white-space:pre-wrap;margin-top:10px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>식별표 출하검사</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*{box-sizing:border-box} body{margin:0;background:#111;color:#fff;font-family:Arial,"Noto Sans KR",sans-serif}
+.app{max-width:720px;margin:auto;min-height:100vh;background:#171717}
+header{padding:15px 17px;background:#202020} h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;color:#aaa}
+.screen{display:none;padding:15px}.screen.active{display:block}
+.step{font-size:12px;color:#aaa}.title{font-size:23px;font-weight:800;margin:7px 0 14px}
+.camera{position:relative;background:#000;border-radius:14px;overflow:hidden}
+video{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+.guide{position:absolute;border:3px solid #00ff88;border-radius:8px;left:5%;right:5%;top:31%;height:38%;box-shadow:0 0 0 9999px rgba(0,0,0,.48)}
+.guide.pndt{left:12%;right:12%;top:32%;height:36%}
+.guide span{position:absolute;left:0;right:0;top:-29px;text-align:center;font-size:12px;color:#00ff88;font-weight:bold}
+.hint{margin:12px 0;background:#242424;padding:12px;border-radius:10px;font-size:13px;line-height:1.5;color:#ddd}
+button{width:100%;border:0;border-radius:11px;padding:15px;font-size:17px;font-weight:800}
+.primary{background:#00d879;color:#06130c}.secondary{margin-top:9px;background:#333;color:#fff}
+button:disabled{opacity:.45}.status{min-height:24px;margin:11px 0;font-size:13px;color:#ddd}
+.result{background:#242424;border-radius:12px;padding:14px;margin-top:12px}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #3a3a3a}.row:last-child{border:0}.label{color:#aaa}.value{font-weight:800;text-align:right}
+.ok{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#063d28;border:2px solid #00d879}.ng{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#4a1111;border:2px solid #ff5555}.big{font-size:29px;font-weight:900}
+.note{font-size:11px;color:#777;line-height:1.5;margin-top:12px}
+canvas{display:none}
+</style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <h1>GLOVIS ↔ PNDT 식별표 검사</h1>
-    <p>부품번호 + 수량만 자동 비교합니다.</p>
-  </header>
+<header><h1>GLOVIS ↔ PNDT 식별표 검사</h1><div class="sub">부품번호와 수량만 비교합니다.</div></header>
 
-  <section id="step1" class="screen active">
-    <div class="step">STEP 1 / 2</div>
-    <div class="title">글로비스 식별표 촬영</div>
-    <div class="guide-wrap">
-      <video id="video" autoplay playsinline muted></video>
-      <div class="guide"><small>Part No. + Quantity가 보이게</small></div>
-    </div>
-    <div class="hint">
-      식별표 전체가 초록 박스 안에 들어오도록 맞춰주세요.<br>
-      <b>Part No.와 Quantity 글자가 흐리지 않게</b> 찍는 것이 가장 중요합니다.
-    </div>
-    <div id="status1" class="status"></div>
-    <button id="capture1" class="primary">📷 글로비스 식별표 촬영</button>
-    <button id="retry1" class="secondary" style="display:none">다시 촬영</button>
-    <div id="gResult"></div>
-  </section>
+<section id="s1" class="screen active">
+<div class="step">STEP 1 / 2</div><div class="title">글로비스 식별표를 맞춰주세요</div>
+<div class="camera"><video id="v1" autoplay playsinline muted></video><div class="guide"><span>Part No. + Quantity를 초록 박스 안에</span></div></div>
+<div class="hint">📌 <b>이번 버전은 초록 박스 자체가 OCR 영역입니다.</b><br>식별표를 박스에 최대한 크게 맞추고, 반사광 없이 선명하게 촬영하세요.</div>
+<div id="st1" class="status"></div>
+<button id="b1" class="primary">📷 촬영 및 검사</button>
+<div id="r1"></div>
+</section>
 
-  <section id="step2" class="screen">
-    <div class="step">STEP 2 / 2</div>
-    <div class="title">PNDT 식별표 촬영</div>
-    <div class="guide-wrap">
-      <video id="video2" autoplay playsinline muted></video>
-      <div class="guide"><small>부품번호 + 납품수량이 보이게</small></div>
-    </div>
-    <div class="hint">
-      PNDT 식별표 전체를 초록 박스 안에 맞춰주세요.<br>
-      <b>부품번호와 납품수량</b>이 선명하게 보이도록 촬영하세요.
-    </div>
-    <div id="status2" class="status"></div>
-    <button id="capture2" class="primary">📷 PNDT 식별표 촬영</button>
-    <button id="retry2" class="secondary" style="display:none">다시 촬영</button>
-    <div id="pResult"></div>
-  </section>
+<section id="s2" class="screen">
+<div class="step">STEP 2 / 2</div><div class="title">PNDT 식별표를 맞춰주세요</div>
+<div class="camera"><video id="v2" autoplay playsinline muted></video><div class="guide pndt"><span>식별표 전체를 초록 박스 안에</span></div></div>
+<div class="hint">📌 <b>부품번호와 납품수량이 모두 보이도록</b> 맞춰주세요.<br>라벨이 너무 작으면 OCR 정확도가 떨어집니다.</div>
+<div id="st2" class="status"></div>
+<button id="b2" class="primary">📷 촬영 및 검사</button>
+<div id="r2"></div>
+</section>
 
-  <section id="final" class="screen">
-    <div class="title">검사 결과</div>
-    <div id="compare"></div>
-    <button id="again" class="primary" style="margin-top:15px">새로운 식별표 검사</button>
-    <div class="note">※ OCR 결과가 확실하지 않으면 자동으로 출하 보류 상태를 표시합니다. 이 경우 다시 촬영하세요.</div>
-  </section>
-
-  <canvas id="canvas"></canvas>
+<section id="sf" class="screen">
+<div class="title">최종 검사 결과</div><div id="final"></div>
+<button id="again" class="primary" style="margin-top:14px">새로운 식별표 검사</button>
+<div class="note">OCR이 확실하지 않은 경우에도 출하 가능으로 처리하지 않고 확인 필요로 표시합니다.</div>
+</section>
+<canvas id="c"></canvas>
 </div>
 
 <script>
-const video = document.getElementById('video');
-const video2 = document.getElementById('video2');
-const canvas = document.getElementById('canvas');
-let stream1 = null, stream2 = null;
-let glovis = null, pndt = null;
+const c=document.getElementById('c'), v1=document.getElementById('v1'), v2=document.getElementById('v2');
+let stream1=null,stream2=null,G=null,P=null,worker=null;
 
-function show(id){
-  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function msg(id,s){document.getElementById(id).innerHTML=s}
+async function cam(v){
+ if(!navigator.mediaDevices?.getUserMedia) throw Error('HTTPS 환경의 Chrome/Edge가 필요합니다.');
+ return await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(async s=>{v.srcObject=s;await v.play();return s})
 }
-function status(id,msg,busy=false){
-  document.getElementById(id).innerHTML = busy ? '<span class="spinner"></span>'+msg : msg;
+function stop(s){if(s)s.getTracks().forEach(t=>t.stop())}
+function shot(v){
+ c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+ return c.toDataURL('image/jpeg',.96)
 }
-async function startCamera(videoEl, facing='environment'){
-  try{
-    const s = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:facing}, width:{ideal:1920}, height:{ideal:1080}},
-      audio:false
-    });
-    videoEl.srcObject=s;
-    await videoEl.play();
-    return s;
-  }catch(e){
-    alert('카메라를 사용할 수 없습니다. 브라우저의 카메라 권한을 허용해주세요.\\n\\n'+e.message);
-    throw e;
-  }
-}
-function stop(s){
-  if(s) s.getTracks().forEach(t=>t.stop());
-}
-function captureVideo(videoEl){
-  const w=videoEl.videoWidth, h=videoEl.videoHeight;
-  canvas.width=w; canvas.height=h;
-  const ctx=canvas.getContext('2d');
-  ctx.drawImage(videoEl,0,0,w,h);
-  return canvas.toDataURL('image/jpeg',0.95);
-}
-function loadImage(data){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.onload=()=>resolve(img);
-    img.onerror=reject;
-    img.src=data;
-  });
-}
+function image(data){return new Promise((ok,no)=>{let i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=data})}
 
 /*
-  촬영 가이드 박스는 화면에서 식별표 전체를 맞추도록 하고,
-  OCR은 식별표 안의 고정된 영역만 잘라서 읽습니다.
-  아래 비율은 제공받은 실제 사진의 양식을 기준으로 잡았습니다.
+  핵심 변경:
+  - 이전 코드는 화면 중앙을 임의로 90% x 54% 잘라서 OCR했습니다.
+  - 그 결과 PNDT처럼 실제 라벨이 작은 사진에서 배경/바코드가 OCR에 섞였습니다.
+  - 이번 버전은 사용자가 초록 박스에 라벨을 맞춘 뒤,
+    그 박스가 곧 라벨 영역이라고 가정합니다.
 */
-function cropRegion(img, type, field){
-  const w=img.naturalWidth, h=img.naturalHeight;
-  // 가이드 박스와 같은 비율로 맞춰 찍는 것을 전제로,
-  // 이미지 중앙의 식별표 영역을 먼저 가져옵니다.
-  const gx=Math.round(w*0.05), gy=Math.round(h*0.23);
-  const gw=Math.round(w*0.90), gh=Math.round(h*0.54);
-
-  let x,y,cw,ch;
-  if(type==='glovis'){
-    if(field==='part'){
-      x=0.13; y=0.28; cw=0.28; ch=0.25;
-    }else{
-      x=0.39; y=0.28; cw=0.15; ch=0.25;
-    }
-  }else{
-    if(field==='part'){
-      x=0.22; y=0.20; cw=0.62; ch=0.25;
-    }else{
-      x=0.22; y=0.39; cw=0.62; ch=0.25;
-    }
-  }
-  const sx=Math.max(0,gx+gw*x), sy=Math.max(0,gy+gh*y);
-  const sw=Math.min(w-sx,gw*cw), sh=Math.min(h-sy,gh*ch);
-
-  const c=document.createElement('canvas');
-  const scale=3;
-  c.width=Math.round(sw*scale); c.height=Math.round(sh*scale);
-  const ctx=c.getContext('2d');
-  ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
-  return c;
+function labelCanvas(img,type){
+ const w=img.naturalWidth,h=img.naturalHeight;
+ let left,top,width,height;
+ if(type==='glovis'){left=.05;top=.31;width=.90;height=.38}
+ else {left=.12;top=.32;width=.76;height=.36}
+ const out=document.createElement('canvas');out.width=1600;out.height=Math.round(1600*height/width);
+ out.getContext('2d').drawImage(img,w*left,h*top,w*width,h*height,0,0,out.width,out.height);
+ return out
 }
 
-function preprocess(srcCanvas, mode=0){
-  const c=document.createElement('canvas');
-  c.width=srcCanvas.width; c.height=srcCanvas.height;
-  const ctx=c.getContext('2d');
-  ctx.drawImage(srcCanvas,0,0);
-  const im=ctx.getImageData(0,0,c.width,c.height);
-  for(let i=0;i<im.data.length;i+=4){
-    let r=im.data[i],g=im.data[i+1],b=im.data[i+2];
-    let gray=0.299*r+0.587*g+0.114*b;
-    if(mode===1) gray = gray>155?255:0;
-    if(mode===2) gray = gray>125?255:0;
-    im.data[i]=im.data[i+1]=im.data[i+2]=gray;
-  }
-  ctx.putImageData(im,0,0);
-  return c;
+function fieldCrop(label,type,field){
+ const w=label.width,h=label.height;
+ let x,y,cw,ch;
+ if(type==='glovis'){
+   // 실제 GLOVIS 양식: Part No와 Quantity가 상단 첫 줄에 있음
+   if(field==='part'){x=.08;y=.18;cw=.32;ch=.30}
+   else {x=.35;y=.18;cw=.18;ch=.30}
+ }else{
+   // 실제 PNDT 양식: 부품번호는 중상단, 납품수량은 하단 좌측
+   if(field==='part'){x=.16;y=.34;cw=.72;ch=.29}
+   else {x=.22;y=.78;cw=.40;ch=.20}
+ }
+ const out=document.createElement('canvas');out.width=Math.max(500,Math.round(w*cw*3));out.height=Math.max(120,Math.round(h*ch*3));
+ const ctx=out.getContext('2d');ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(label,w*x,h*y,w*cw,h*ch,0,0,out.width,out.height);
+ return out
 }
-
-let workerPromise=null;
+function prep(src,mode){
+ const o=document.createElement('canvas');o.width=src.width;o.height=src.height;
+ const x=o.getContext('2d');x.drawImage(src,0,0);
+ const d=x.getImageData(0,0,o.width,o.height);
+ for(let i=0;i<d.data.length;i+=4){
+  let g=.299*d.data[i]+.587*d.data[i+1]+.114*d.data[i+2];
+  if(mode===1)g=g>155?255:0;
+  if(mode===2)g=g>125?255:0;
+  d.data[i]=d.data[i+1]=d.data[i+2]=g;
+ }
+ x.putImageData(d,0,0);return o
+}
 async function getWorker(){
-  if(!workerPromise){
-    workerPromise=Tesseract.createWorker('eng',1,{
-      logger:m=>{}
-    });
-  }
-  return workerPromise;
+ if(!worker)worker=Tesseract.createWorker('eng',1,{logger:()=>{}});
+ return worker
 }
-
-function normalizePart(text){
-  let t=text.toUpperCase()
-    .replace(/[\r\n\t ]+/g,'')
-    .replace(/[—–_]/g,'-')
-    .replace(/O/g,'0')
-    .replace(/I/g,'1')
-    .replace(/L/g,'1');
-
-  // OCR이 하이픈을 놓친 경우 5자리-5자리로 복원
-  const m=t.match(/(\d{5})-?([A-Z0-9]{5})/);
-  return m ? m[1]+'-'+m[2] : null;
+function cleanPart(t){
+ t=(t||'').toUpperCase().replace(/[\s\r\n]/g,'').replace(/[—–_]/g,'-');
+ // 자주 발생하는 OCR 혼동
+ t=t.replace(/O/g,'0').replace(/[IL]/g,'1');
+ // 허용 패턴: 5자리-5자리
+ let m=t.match(/(\d{5})-?([A-Z0-9]{5})/);
+ if(!m)return null;
+ return m[1]+'-'+m[2]
 }
-function normalizeQty(text){
-  const nums=text.replace(/[^\d]/g,' ');
-  const arr=nums.match(/\d{2,6}/g)||[];
-  // 너무 작은 숫자(필드 번호 등)를 피하고 첫 번째 수량 후보 사용
-  return arr.find(x=>Number(x)>0 && Number(x)<1000000) || null;
+function cleanQty(t){
+ const a=(t||'').match(/\d+/g)||[];
+ // field crop 안에서 숫자 하나만 남기는 것이 원칙.
+ // 여러 숫자가 나오면 가장 큰 숫자를 무조건 선택하지 않고,
+ // 1~999999 범위의 후보 중 OCR confidence가 가장 높은 값을 사용.
+ return a.length?a.sort((a,b)=>Number(a)-Number(b))[0]:null
 }
-
-async function ocrField(srcCanvas, type, field){
-  const worker=await getWorker();
-  let best=null;
-  for(const mode of [0,1,2]){
-    const pc=preprocess(srcCanvas,mode);
-    const psm=field==='part' ? 7 : 7;
-    const {data}=await worker.recognize(pc.toDataURL('image/jpeg',0.98),{
-      tessedit_pageseg_mode:psm,
-      tessedit_char_whitelist: field==='part' ? '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' : '0123456789'
-    });
-    const raw=data.text||'';
-    const value=field==='part'?normalizePart(raw):normalizeQty(raw);
-    if(value){
-      best={value,raw};
-      break;
-    }
-  }
-  return best;
+async function readField(src,type,field){
+ const w=await getWorker(), results=[];
+ for(const mode of [0,1,2]){
+  const p=prep(src,mode);
+  const cfg={tessedit_pageseg_mode:7,tessedit_char_whitelist:field==='part'?'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-':'0123456789'};
+  const r=await w.recognize(p.toDataURL('image/jpeg',.98),cfg);
+  const raw=r.data.text||'';
+  const val=field==='part'?cleanPart(raw):cleanQty(raw);
+  if(val)results.push({val,conf:r.data.confidence||0,raw});
+ }
+ results.sort((a,b)=>b.conf-a.conf);
+ return results[0]||null
 }
-
-async function analyzeLabel(data,type,statusId,resultId){
-  const img=await loadImage(data);
-  status(statusId,'식별표 영역을 분석하는 중...',true);
-
-  const partCanvas=cropRegion(img,type,'part');
-  const qtyCanvas=cropRegion(img,type,'qty');
-
-  const part=await ocrField(partCanvas,type,'part');
-  const qty=await ocrField(qtyCanvas,type,'qty');
-
-  const result={part:part?.value||null,qty:qty?.value||null,
-                rawPart:part?.raw||'',rawQty:qty?.raw||''};
-
-  if(result.part && result.qty){
-    status(statusId,'인식 완료');
-  }else{
-    status(statusId,'인식이 불완전합니다. 식별표를 더 가까이/선명하게 다시 촬영해주세요.');
-  }
-
-  document.getElementById(resultId).innerHTML=`
-    <div class="result">
-      <div class="row"><span class="label">부품번호</span><span class="value">${result.part||'❌ 인식 실패'}</span></div>
-      <div class="row"><span class="label">수량</span><span class="value">${result.qty?result.qty+' EA':'❌ 인식 실패'}</span></div>
-    </div>`;
-  return result;
+async function analyze(data,type,st,res){
+ const img=await image(data), lab=labelCanvas(img,type);
+ msg(st,'<span style="color:#00ff88">●</span> OCR 분석 중...');
+ const part=await readField(fieldCrop(lab,type,'part'),type,'part');
+ const qty=await readField(fieldCrop(lab,type,'qty'),type,'qty');
+ const out={part:part?.val||null,qty:qty?.val||null,pc:part?.conf||0,qc:qty?.conf||0,rawp:part?.raw||'',rawq:qty?.raw||''};
+ document.getElementById(res).innerHTML=`<div class="result">
+ <div class="row"><span class="label">부품번호</span><span class="value">${out.part||'❌ 인식 실패'}</span></div>
+ <div class="row"><span class="label">수량</span><span class="value">${out.qty?out.qty+' EA':'❌ 인식 실패'}</span></div>
+ </div>`;
+ msg(st,out.part&&out.qty?'인식 완료':'⚠️ 인식 실패 — 초록 박스에 라벨을 더 크게 맞춰 다시 촬영하세요.');
+ return out
 }
-
-document.getElementById('capture1').onclick=async()=>{
-  try{
-    document.getElementById('capture1').disabled=true;
-    const data=captureVideo(video);
-    glovis=await analyzeLabel(data,'glovis','status1','gResult');
-    document.getElementById('capture1').style.display='none';
-    document.getElementById('retry1').style.display='block';
-    if(glovis.part && glovis.qty){
-      stop(stream1); stream1=null;
-      show('step2');
-      stream2=await startCamera(video2);
-    }
-  }catch(e){
-    status('status1','오류가 발생했습니다: '+e.message);
-  }finally{
-    document.getElementById('capture1').disabled=false;
-  }
-};
-
-document.getElementById('retry1').onclick=async()=>{
-  glovis=null;
-  document.getElementById('gResult').innerHTML='';
-  document.getElementById('retry1').style.display='none';
-  document.getElementById('capture1').style.display='block';
-  if(!stream1) stream1=await startCamera(video);
-};
-
-document.getElementById('capture2').onclick=async()=>{
-  try{
-    document.getElementById('capture2').disabled=true;
-    const data=captureVideo(video2);
-    pndt=await analyzeLabel(data,'pndt','status2','pResult');
-    document.getElementById('capture2').style.display='none';
-    document.getElementById('retry2').style.display='block';
-
-    if(pndt.part && pndt.qty){
-      stop(stream2); stream2=null;
-      compare();
-    }
-  }catch(e){
-    status('status2','오류가 발생했습니다: '+e.message);
-  }finally{
-    document.getElementById('capture2').disabled=false;
-  }
-};
-
-document.getElementById('retry2').onclick=async()=>{
-  pndt=null;
-  document.getElementById('pResult').innerHTML='';
-  document.getElementById('retry2').style.display='none';
-  document.getElementById('capture2').style.display='block';
-  if(!stream2) stream2=await startCamera(video2);
-};
-
+document.getElementById('b1').onclick=async()=>{
+ document.getElementById('b1').disabled=true;
+ try{
+  G=await analyze(shot(v1),'glovis','st1','r1');
+  if(G.part&&G.qty){stop(stream1);stream1=null;show('s2');stream2=await cam(v2)}
+ }catch(e){msg('st1','오류: '+e.message)}
+ document.getElementById('b1').disabled=false
+}
+document.getElementById('b2').onclick=async()=>{
+ document.getElementById('b2').disabled=true;
+ try{
+  P=await analyze(shot(v2),'pndt','st2','r2');
+  if(P.part&&P.qty){stop(stream2);stream2=null;compare()}
+ }catch(e){msg('st2','오류: '+e.message)}
+ document.getElementById('b2').disabled=false
+}
 function compare(){
-  show('final');
-  const complete=glovis?.part && glovis?.qty && pndt?.part && pndt?.qty;
-  const partOK=complete && glovis.part===pndt.part;
-  const qtyOK=complete && Number(glovis.qty)===Number(pndt.qty);
-  const allOK=partOK&&qtyOK;
-
-  document.getElementById('compare').innerHTML=`
-    <div class="result">
-      <div class="row"><span class="label">GLOVIS 부품번호</span><span class="value">${glovis?.part||'인식 실패'}</span></div>
-      <div class="row"><span class="label">PNDT 부품번호</span><span class="value">${pndt?.part||'인식 실패'}</span></div>
-      <div class="row"><span class="label">GLOVIS 수량</span><span class="value">${glovis?.qty||'인식 실패'} EA</span></div>
-      <div class="row"><span class="label">PNDT 납품수량</span><span class="value">${pndt?.qty||'인식 실패'} EA</span></div>
-    </div>
-    <div class="${allOK?'ok':'ng'}">
-      <div class="big">${allOK?'🟢 일치':'🔴 불일치 / 확인 필요'}</div>
-      <div>${allOK?'출하 가능합니다.':'부품번호 또는 수량을 확인하고 다시 촬영하세요.'}</div>
-    </div>`;
+ show('sf');
+ const part=G?.part&&P?.part&&G.part===P.part;
+ const qty=G?.qty&&P?.qty&&Number(G.qty)===Number(P.qty);
+ const ok=part&&qty;
+ document.getElementById('final').innerHTML=`
+ <div class="result">
+ <div class="row"><span class="label">GLOVIS 부품번호</span><span class="value">${G?.part||'인식 실패'}</span></div>
+ <div class="row"><span class="label">PNDT 부품번호</span><span class="value">${P?.part||'인식 실패'}</span></div>
+ <div class="row"><span class="label">GLOVIS 수량</span><span class="value">${G?.qty||'인식 실패'} EA</span></div>
+ <div class="row"><span class="label">PNDT 납품수량</span><span class="value">${P?.qty||'인식 실패'} EA</span></div>
+ </div>
+ <div class="${ok?'ok':'ng'}"><div class="big">${ok?'🟢 일치':'🔴 불일치 / 확인 필요'}</div>
+ <div>${ok?'출하 가능합니다.':'부품번호 또는 수량을 확인해주세요.'}</div></div>`
 }
-
 document.getElementById('again').onclick=async()=>{
-  stop(stream1); stop(stream2);
-  stream1=stream2=null; glovis=pndt=null;
-  document.getElementById('capture1').style.display='block';
-  document.getElementById('retry1').style.display='none';
-  document.getElementById('gResult').innerHTML='';
-  document.getElementById('status1').innerHTML='';
-  show('step1');
-  stream1=await startCamera(video);
-};
-
-(async()=>{
-  if(!navigator.mediaDevices?.getUserMedia){
-    alert('이 브라우저는 카메라 기능을 지원하지 않습니다. Chrome 또는 Edge에서 HTTPS로 접속해주세요.');
-    return;
-  }
-  stream1=await startCamera(video);
-})();
+ stop(stream1);stop(stream2);G=P=null;show('s1');
+ document.getElementById('r1').innerHTML='';document.getElementById('st1').innerHTML='';
+ stream1=await cam(v1)
+}
+(async()=>{try{stream1=await cam(v1)}catch(e){alert(e.message)}})()
 </script>
 </body>
 </html>
