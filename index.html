@@ -1,534 +1,370 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HMMA GLOVIS Label Check v6</title>
-
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#f3f5f7;font-family:Arial,"Noto Sans KR",sans-serif;color:#17202a}
-.container{max-width:720px;margin:auto;padding:18px}
-.title{font-size:25px;font-weight:800;margin-bottom:5px}
-.subtitle{font-size:13px;color:#66727d;margin-bottom:16px}
-.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 3px 15px rgba(0,0,0,.08)}
-h2{font-size:18px;margin:0 0 12px}
-input[type=file]{display:none}
-button{width:100%;border:0;border-radius:12px;padding:15px;margin-top:8px;font-size:16px;font-weight:700}
-.mainBtn{background:#17202a;color:#fff}
-.resetBtn{background:#e8edf1;color:#17202a}
-.retryBtn{background:#edf3ff;color:#1d4ed8}
-.status{margin-top:12px;padding:13px;border-radius:10px;background:#eef2f5;white-space:pre-line;font-size:14px;line-height:1.5}
-.preview{width:100%;max-height:360px;object-fit:contain;border-radius:10px;margin-top:12px;background:#111}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.box{border:1px solid #dce2e6;border-radius:12px;padding:14px}
-.ok{background:#eaf8ee;border-color:#b7e2c2}
-.warn{background:#fff8e6;border-color:#efd38b}
-.fail{background:#fff0f0;border-color:#edb5b5}
-.label{font-size:12px;color:#687580}
-.value{margin-top:5px;font-size:22px;font-weight:800;word-break:break-all}
-.raw{background:#f5f6f7;border-radius:10px;padding:12px;margin-top:12px;font-size:12px;line-height:1.5;word-break:break-all}
-.small{font-size:12px;color:#66727d;line-height:1.6}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GLOVIS ↔ PNDT 식별표 검사</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,"Noto Sans KR",sans-serif;background:#111;color:#fff}
+    .app{max-width:720px;margin:auto;min-height:100vh;background:#171717}
+    header{padding:16px 18px;background:#202020;position:sticky;top:0;z-index:10}
+    header h1{font-size:20px;margin:0 0 5px}
+    header p{font-size:13px;color:#bbb;margin:0}
+    .screen{display:none;padding:16px}
+    .screen.active{display:block}
+    .step{font-size:13px;color:#aaa;margin-bottom:8px}
+    .title{font-size:23px;font-weight:800;margin-bottom:12px}
+    .guide-wrap{position:relative;background:#000;border-radius:14px;overflow:hidden}
+    video{width:100%;display:block;aspect-ratio:3/4;object-fit:cover}
+    .guide{position:absolute;left:5%;right:5%;top:23%;height:54%;border:3px solid #00ff88;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.38)}
+    .guide:before{content:"식별표 전체를 초록 박스 안에 맞춰주세요";position:absolute;top:-34px;left:0;right:0;text-align:center;font-size:13px;color:#00ff88;font-weight:bold}
+    .guide small{position:absolute;left:10px;bottom:8px;background:rgba(0,0,0,.65);padding:5px 8px;border-radius:5px;color:#fff}
+    .hint{background:#242424;border-radius:10px;padding:12px;margin:14px 0;font-size:14px;line-height:1.5;color:#ddd}
+    button{width:100%;border:0;border-radius:12px;padding:15px 16px;font-size:17px;font-weight:800;cursor:pointer}
+    .primary{background:#00d879;color:#07130d}
+    .secondary{background:#333;color:#fff;margin-top:10px}
+    button:disabled{opacity:.45}
+    .result{background:#242424;border-radius:14px;padding:16px;margin-top:14px}
+    .row{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #3a3a3a}
+    .row:last-child{border-bottom:0}
+    .label{color:#aaa}.value{font-weight:800;text-align:right;word-break:break-all}
+    .ok{background:#063d28;border:2px solid #00d879;color:#8fffc4;text-align:center;padding:20px;border-radius:14px;margin-top:15px}
+    .ng{background:#4a1111;border:2px solid #ff5555;color:#ffb2b2;text-align:center;padding:20px;border-radius:14px;margin-top:15px}
+    .big{font-size:30px;font-weight:900;margin-bottom:6px}
+    .status{min-height:24px;margin:12px 0;color:#ddd;font-size:14px}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid #777;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:7px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    canvas{display:none}
+    .note{font-size:12px;color:#888;line-height:1.45;margin-top:12px}
+    .manual{display:none}
+    input{width:100%;padding:13px;border-radius:9px;border:1px solid #555;background:#111;color:#fff;font-size:18px}
+    .debug{font-size:11px;color:#777;white-space:pre-wrap;margin-top:10px}
+  </style>
 </head>
-
 <body>
-<div class="container">
+<div class="app">
+  <header>
+    <h1>GLOVIS ↔ PNDT 식별표 검사</h1>
+    <p>부품번호 + 수량만 자동 비교합니다.</p>
+  </header>
 
-<div class="title">HMMA GLOVIS Label Check v6</div>
-<div class="subtitle">GLOVIS 전용 테스트 · QR + 전체 OCR + 품번/수량 보정</div>
+  <section id="step1" class="screen active">
+    <div class="step">STEP 1 / 2</div>
+    <div class="title">글로비스 식별표 촬영</div>
+    <div class="guide-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="guide"><small>Part No. + Quantity가 보이게</small></div>
+    </div>
+    <div class="hint">
+      식별표 전체가 초록 박스 안에 들어오도록 맞춰주세요.<br>
+      <b>Part No.와 Quantity 글자가 흐리지 않게</b> 찍는 것이 가장 중요합니다.
+    </div>
+    <div id="status1" class="status"></div>
+    <button id="capture1" class="primary">📷 글로비스 식별표 촬영</button>
+    <button id="retry1" class="secondary" style="display:none">다시 촬영</button>
+    <div id="gResult"></div>
+  </section>
 
-<div class="card">
-<h2>① GLOVIS 식별표 촬영</h2>
+  <section id="step2" class="screen">
+    <div class="step">STEP 2 / 2</div>
+    <div class="title">PNDT 식별표 촬영</div>
+    <div class="guide-wrap">
+      <video id="video2" autoplay playsinline muted></video>
+      <div class="guide"><small>부품번호 + 납품수량이 보이게</small></div>
+    </div>
+    <div class="hint">
+      PNDT 식별표 전체를 초록 박스 안에 맞춰주세요.<br>
+      <b>부품번호와 납품수량</b>이 선명하게 보이도록 촬영하세요.
+    </div>
+    <div id="status2" class="status"></div>
+    <button id="capture2" class="primary">📷 PNDT 식별표 촬영</button>
+    <button id="retry2" class="secondary" style="display:none">다시 촬영</button>
+    <div id="pResult"></div>
+  </section>
 
-<input id="photo" type="file" accept="image/*" capture="environment">
+  <section id="final" class="screen">
+    <div class="title">검사 결과</div>
+    <div id="compare"></div>
+    <button id="again" class="primary" style="margin-top:15px">새로운 식별표 검사</button>
+    <div class="note">※ OCR 결과가 확실하지 않으면 자동으로 출하 보류 상태를 표시합니다. 이 경우 다시 촬영하세요.</div>
+  </section>
 
-<button class="mainBtn" onclick="document.getElementById('photo').click()">
-📷 식별표 촬영 / 사진 선택
-</button>
-
-<button class="retryBtn" id="retryBtn" style="display:none" onclick="processCurrentPhoto()">
-🔄 같은 사진 다시 인식
-</button>
-
-<button class="resetBtn" onclick="resetApp()">초기화</button>
-
-<div id="status" class="status">사진을 촬영하면 QR을 먼저 시도하고, 실패하면 전체 OCR로 Part No와 Quantity를 읽습니다.</div>
-<img id="preview" class="preview" style="display:none">
-</div>
-
-<div class="card" id="resultCard" style="display:none">
-<h2>② GLOVIS 인식 결과</h2>
-
-<div class="grid">
-<div id="partBox" class="box">
-<div class="label">Part No</div>
-<div id="partResult" class="value">-</div>
-</div>
-
-<div id="qtyBox" class="box">
-<div class="label">Quantity</div>
-<div id="qtyResult" class="value">-</div>
-</div>
-</div>
-
-<div class="label" style="margin-top:15px">인식 방법</div>
-<div id="methodResult" class="raw">-</div>
-
-<div class="label" style="margin-top:10px">QR 원문</div>
-<div id="qrResult" class="raw">QR 미인식</div>
-
-<div class="label" style="margin-top:10px">OCR 원문</div>
-<div id="ocrResult" class="raw">OCR 미실행</div>
-</div>
-
-<div class="card">
-<h2>현장 촬영 요령</h2>
-<div class="small">
-① 식별표가 화면의 60~80% 정도 차도록 가까이 촬영<br>
-② 가능하면 식별표를 정면에서 촬영<br>
-③ QR에 반사광이 생기지 않게 촬영<br>
-④ Part No와 Quantity가 흐리지 않게 한 번 고정 후 촬영<br>
-⑤ 사진 전체를 OCR하므로 기존 버전보다 위치 변화에 강합니다.
-</div>
-</div>
-
+  <canvas id="canvas"></canvas>
 </div>
 
 <script>
-let currentDataUrl = null;
+const video = document.getElementById('video');
+const video2 = document.getElementById('video2');
+const canvas = document.getElementById('canvas');
+let stream1 = null, stream2 = null;
+let glovis = null, pndt = null;
 
-const $ = id => document.getElementById(id);
-
-function setStatus(msg){
-    $("status").textContent = msg;
+function show(id){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function status(id,msg,busy=false){
+  document.getElementById(id).innerHTML = busy ? '<span class="spinner"></span>'+msg : msg;
+}
+async function startCamera(videoEl, facing='environment'){
+  try{
+    const s = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:facing}, width:{ideal:1920}, height:{ideal:1080}},
+      audio:false
+    });
+    videoEl.srcObject=s;
+    await videoEl.play();
+    return s;
+  }catch(e){
+    alert('카메라를 사용할 수 없습니다. 브라우저의 카메라 권한을 허용해주세요.\\n\\n'+e.message);
+    throw e;
+  }
+}
+function stop(s){
+  if(s) s.getTracks().forEach(t=>t.stop());
+}
+function captureVideo(videoEl){
+  const w=videoEl.videoWidth, h=videoEl.videoHeight;
+  canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(videoEl,0,0,w,h);
+  return canvas.toDataURL('image/jpeg',0.95);
+}
+function loadImage(data){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=reject;
+    img.src=data;
+  });
 }
 
-function normalize(s){
-    return (s || "")
-        .toUpperCase()
-        .replace(/[|]/g,"")
-        .replace(/\r/g," ")
-        .replace(/\n/g," ");
-}
+/*
+  촬영 가이드 박스는 화면에서 식별표 전체를 맞추도록 하고,
+  OCR은 식별표 안의 고정된 영역만 잘라서 읽습니다.
+  아래 비율은 제공받은 실제 사진의 양식을 기준으로 잡았습니다.
+*/
+function cropRegion(img, type, field){
+  const w=img.naturalWidth, h=img.naturalHeight;
+  // 가이드 박스와 같은 비율로 맞춰 찍는 것을 전제로,
+  // 이미지 중앙의 식별표 영역을 먼저 가져옵니다.
+  const gx=Math.round(w*0.05), gy=Math.round(h*0.23);
+  const gw=Math.round(w*0.90), gh=Math.round(h*0.54);
 
-/* -------------------------------------------------------
-   Part No 보정
-   실제 GLOVIS 형식:
-   23124-2S120
-   OCR이 23124-25120 등으로 읽는 경우 보정
-------------------------------------------------------- */
-function normalizePart(raw){
-    if(!raw) return null;
-
-    let s = normalize(raw)
-        .replace(/\s+/g,"")
-        .replace(/[^A-Z0-9-]/g,"");
-
-    // 정상 형식
-    let m = s.match(/(\d{5})-?2([A-Z0-9])(\d{3})/);
-    if(m){
-        let mid = m[2];
-
-        // 이 위치의 S는 OCR에서 5로 자주 인식됨
-        if(mid === "5") mid = "S";
-
-        return `${m[1]}-2${mid}${m[3]}`;
+  let x,y,cw,ch;
+  if(type==='glovis'){
+    if(field==='part'){
+      x=0.13; y=0.28; cw=0.28; ch=0.25;
+    }else{
+      x=0.39; y=0.28; cw=0.15; ch=0.25;
     }
-
-    // 231242S120처럼 하이픈이 사라진 경우
-    m = s.match(/(\d{5})2([A-Z0-9])(\d{3})/);
-    if(m){
-        let mid = m[2];
-        if(mid === "5") mid = "S";
-        return `${m[1]}-2${mid}${m[3]}`;
+  }else{
+    if(field==='part'){
+      x=0.22; y=0.20; cw=0.62; ch=0.25;
+    }else{
+      x=0.22; y=0.39; cw=0.62; ch=0.25;
     }
+  }
+  const sx=Math.max(0,gx+gw*x), sy=Math.max(0,gy+gh*y);
+  const sw=Math.min(w-sx,gw*cw), sh=Math.min(h-sy,gh*ch);
 
-    // 23124-25120처럼 OCR이 S를 5로 읽은 전형적인 경우
-    m = s.match(/(\d{5})-?25(\d{3})/);
-    if(m){
-        return `${m[1]}-2S${m[2]}`;
+  const c=document.createElement('canvas');
+  const scale=3;
+  c.width=Math.round(sw*scale); c.height=Math.round(sh*scale);
+  const ctx=c.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+  return c;
+}
+
+function preprocess(srcCanvas, mode=0){
+  const c=document.createElement('canvas');
+  c.width=srcCanvas.width; c.height=srcCanvas.height;
+  const ctx=c.getContext('2d');
+  ctx.drawImage(srcCanvas,0,0);
+  const im=ctx.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<im.data.length;i+=4){
+    let r=im.data[i],g=im.data[i+1],b=im.data[i+2];
+    let gray=0.299*r+0.587*g+0.114*b;
+    if(mode===1) gray = gray>155?255:0;
+    if(mode===2) gray = gray>125?255:0;
+    im.data[i]=im.data[i+1]=im.data[i+2]=gray;
+  }
+  ctx.putImageData(im,0,0);
+  return c;
+}
+
+let workerPromise=null;
+async function getWorker(){
+  if(!workerPromise){
+    workerPromise=Tesseract.createWorker('eng',1,{
+      logger:m=>{}
+    });
+  }
+  return workerPromise;
+}
+
+function normalizePart(text){
+  let t=text.toUpperCase()
+    .replace(/[\r\n\t ]+/g,'')
+    .replace(/[—–_]/g,'-')
+    .replace(/O/g,'0')
+    .replace(/I/g,'1')
+    .replace(/L/g,'1');
+
+  // OCR이 하이픈을 놓친 경우 5자리-5자리로 복원
+  const m=t.match(/(\d{5})-?([A-Z0-9]{5})/);
+  return m ? m[1]+'-'+m[2] : null;
+}
+function normalizeQty(text){
+  const nums=text.replace(/[^\d]/g,' ');
+  const arr=nums.match(/\d{2,6}/g)||[];
+  // 너무 작은 숫자(필드 번호 등)를 피하고 첫 번째 수량 후보 사용
+  return arr.find(x=>Number(x)>0 && Number(x)<1000000) || null;
+}
+
+async function ocrField(srcCanvas, type, field){
+  const worker=await getWorker();
+  let best=null;
+  for(const mode of [0,1,2]){
+    const pc=preprocess(srcCanvas,mode);
+    const psm=field==='part' ? 7 : 7;
+    const {data}=await worker.recognize(pc.toDataURL('image/jpeg',0.98),{
+      tessedit_pageseg_mode:psm,
+      tessedit_char_whitelist: field==='part' ? '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' : '0123456789'
+    });
+    const raw=data.text||'';
+    const value=field==='part'?normalizePart(raw):normalizeQty(raw);
+    if(value){
+      best={value,raw};
+      break;
     }
-
-    return null;
+  }
+  return best;
 }
 
-/* -------------------------------------------------------
-   Quantity 보정
-------------------------------------------------------- */
-function normalizeQty(raw){
-    if(!raw) return null;
+async function analyzeLabel(data,type,statusId,resultId){
+  const img=await loadImage(data);
+  status(statusId,'식별표 영역을 분석하는 중...',true);
 
-    let t = normalize(raw);
+  const partCanvas=cropRegion(img,type,'part');
+  const qtyCanvas=cropRegion(img,type,'qty');
 
-    // Quantity 바로 뒤 숫자
-    let m = t.match(/QUANTITY[^0-9]{0,12}(\d{1,5})/);
-    if(m){
-        let n = parseInt(m[1],10);
-        if(n > 0 && n <= 99999) return n;
+  const part=await ocrField(partCanvas,type,'part');
+  const qty=await ocrField(qtyCanvas,type,'qty');
+
+  const result={part:part?.value||null,qty:qty?.value||null,
+                rawPart:part?.raw||'',rawQty:qty?.raw||''};
+
+  if(result.part && result.qty){
+    status(statusId,'인식 완료');
+  }else{
+    status(statusId,'인식이 불완전합니다. 식별표를 더 가까이/선명하게 다시 촬영해주세요.');
+  }
+
+  document.getElementById(resultId).innerHTML=`
+    <div class="result">
+      <div class="row"><span class="label">부품번호</span><span class="value">${result.part||'❌ 인식 실패'}</span></div>
+      <div class="row"><span class="label">수량</span><span class="value">${result.qty?result.qty+' EA':'❌ 인식 실패'}</span></div>
+    </div>`;
+  return result;
+}
+
+document.getElementById('capture1').onclick=async()=>{
+  try{
+    document.getElementById('capture1').disabled=true;
+    const data=captureVideo(video);
+    glovis=await analyzeLabel(data,'glovis','status1','gResult');
+    document.getElementById('capture1').style.display='none';
+    document.getElementById('retry1').style.display='block';
+    if(glovis.part && glovis.qty){
+      stop(stream1); stream1=null;
+      show('step2');
+      stream2=await startCamera(video2);
     }
+  }catch(e){
+    status('status1','오류가 발생했습니다: '+e.message);
+  }finally{
+    document.getElementById('capture1').disabled=false;
+  }
+};
 
-    // OCR이 "Quantitv" 등으로 읽을 때
-    m = t.match(/QUANT[A-Z0-9]{0,4}[^0-9]{0,12}(\d{1,5})/);
-    if(m){
-        let n = parseInt(m[1],10);
-        if(n > 0 && n <= 99999) return n;
+document.getElementById('retry1').onclick=async()=>{
+  glovis=null;
+  document.getElementById('gResult').innerHTML='';
+  document.getElementById('retry1').style.display='none';
+  document.getElementById('capture1').style.display='block';
+  if(!stream1) stream1=await startCamera(video);
+};
+
+document.getElementById('capture2').onclick=async()=>{
+  try{
+    document.getElementById('capture2').disabled=true;
+    const data=captureVideo(video2);
+    pndt=await analyzeLabel(data,'pndt','status2','pResult');
+    document.getElementById('capture2').style.display='none';
+    document.getElementById('retry2').style.display='block';
+
+    if(pndt.part && pndt.qty){
+      stop(stream2); stream2=null;
+      compare();
     }
+  }catch(e){
+    status('status2','오류가 발생했습니다: '+e.message);
+  }finally{
+    document.getElementById('capture2').disabled=false;
+  }
+};
 
-    return null;
+document.getElementById('retry2').onclick=async()=>{
+  pndt=null;
+  document.getElementById('pResult').innerHTML='';
+  document.getElementById('retry2').style.display='none';
+  document.getElementById('capture2').style.display='block';
+  if(!stream2) stream2=await startCamera(video2);
+};
+
+function compare(){
+  show('final');
+  const complete=glovis?.part && glovis?.qty && pndt?.part && pndt?.qty;
+  const partOK=complete && glovis.part===pndt.part;
+  const qtyOK=complete && Number(glovis.qty)===Number(pndt.qty);
+  const allOK=partOK&&qtyOK;
+
+  document.getElementById('compare').innerHTML=`
+    <div class="result">
+      <div class="row"><span class="label">GLOVIS 부품번호</span><span class="value">${glovis?.part||'인식 실패'}</span></div>
+      <div class="row"><span class="label">PNDT 부품번호</span><span class="value">${pndt?.part||'인식 실패'}</span></div>
+      <div class="row"><span class="label">GLOVIS 수량</span><span class="value">${glovis?.qty||'인식 실패'} EA</span></div>
+      <div class="row"><span class="label">PNDT 납품수량</span><span class="value">${pndt?.qty||'인식 실패'} EA</span></div>
+    </div>
+    <div class="${allOK?'ok':'ng'}">
+      <div class="big">${allOK?'🟢 일치':'🔴 불일치 / 확인 필요'}</div>
+      <div>${allOK?'출하 가능합니다.':'부품번호 또는 수량을 확인하고 다시 촬영하세요.'}</div>
+    </div>`;
 }
 
-/* -------------------------------------------------------
-   QR 원문에서 Part + Quantity 추출
-------------------------------------------------------- */
-function parseQR(raw){
-    if(!raw) return null;
-
-    let t = normalize(raw).replace(/\s+/g,"");
-
-    /*
-      실제 예:
-      CHB3TQ8CV26231242S1200002409269S3B8400SEF9
-
-      필요한 부분:
-      231242S120 + 000240
-    */
-
-    let m = t.match(/(\d{5}2[A-Z0-9]\d{3})(\d{6})/);
-
-    if(!m) return null;
-
-    let part = normalizePart(m[1]);
-    let qty = parseInt(m[2],10);
-
-    if(!part || isNaN(qty)) return null;
-
-    return {
-        part: part,
-        qty: qty,
-        raw: raw
-    };
-}
-
-/* -------------------------------------------------------
-   BarcodeDetector
-------------------------------------------------------- */
-async function barcodeDetector(img){
-    if(!("BarcodeDetector" in window)) return null;
-
-    try{
-        const detector = new BarcodeDetector({formats:["qr_code"]});
-        const codes = await detector.detect(img);
-
-        for(const c of codes){
-            const r = parseQR(c.rawValue);
-            if(r) return r;
-        }
-    }catch(e){
-        console.log("BarcodeDetector:",e);
-    }
-
-    return null;
-}
-
-/* -------------------------------------------------------
-   jsQR용 Canvas
-------------------------------------------------------- */
-function makeCanvas(img, scale, mode){
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-
-    const c = document.createElement("canvas");
-    c.width = Math.round(w * scale);
-    c.height = Math.round(h * scale);
-
-    const ctx = c.getContext("2d",{willReadFrequently:true});
-    ctx.drawImage(img,0,0,c.width,c.height);
-
-    if(mode){
-        const d = ctx.getImageData(0,0,c.width,c.height);
-        const p = d.data;
-
-        for(let i=0;i<p.length;i+=4){
-            let g = 0.299*p[i] + 0.587*p[i+1] + 0.114*p[i+2];
-
-            if(mode === "gray"){
-                p[i]=p[i+1]=p[i+2]=g;
-            }else if(mode === "contrast"){
-                g=(g-128)*2+128;
-                g=Math.max(0,Math.min(255,g));
-                p[i]=p[i+1]=p[i+2]=g;
-            }
-        }
-        ctx.putImageData(d,0,0);
-    }
-
-    return c;
-}
-
-/* -------------------------------------------------------
-   QR 다중 시도
-------------------------------------------------------- */
-async function jsQRSearch(img){
-
-    const variants = [
-        [1.0,null],
-        [1.5,null],
-        [2.0,null],
-        [2.0,"gray"],
-        [2.0,"contrast"]
-    ];
-
-    for(let i=0;i<variants.length;i++){
-
-        setStatus(
-            "① QR 인식 중...\n" +
-            `검색 ${i+1}/${variants.length}`
-        );
-
-        const [scale,mode] = variants[i];
-        const c = makeCanvas(img,scale,mode);
-        const ctx = c.getContext("2d",{willReadFrequently:true});
-        const d = ctx.getImageData(0,0,c.width,c.height);
-
-        const result = jsQR(
-            d.data,
-            d.width,
-            d.height,
-            {inversionAttempts:"attemptBoth"}
-        );
-
-        if(result && result.data){
-            const parsed = parseQR(result.data);
-            if(parsed) return parsed;
-        }
-    }
-
-    return null;
-}
-
-/* -------------------------------------------------------
-   OCR
-   전체 이미지에서 먼저 읽고, 그 결과를 보정
-------------------------------------------------------- */
-async function runOCR(img){
-
-    setStatus("② QR 실패 → 전체 이미지 OCR 진행 중...\n잠시 기다려 주세요.");
-
-    const c = document.createElement("canvas");
-
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-
-    /*
-      너무 작은 이미지는 확대,
-      너무 큰 이미지는 적당히 축소
-    */
-    const targetWidth = Math.min(2200, Math.max(1600,w));
-    const scale = targetWidth / w;
-
-    c.width = Math.round(w*scale);
-    c.height = Math.round(h*scale);
-
-    const ctx = c.getContext("2d");
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(img,0,0,c.width,c.height);
-
-    const result = await Tesseract.recognize(
-        c,
-        "eng",
-        {
-            logger: m => {
-                if(m.status === "recognizing text"){
-                    setStatus(
-                        "② OCR 진행 중... " +
-                        Math.round(m.progress*100) + "%"
-                    );
-                }
-            }
-        }
-    );
-
-    const text = result.data.text || "";
-
-    console.log("OCR RAW:",text);
-
-    let part = normalizePart(text);
-    let qty = normalizeQty(text);
-
-    /*
-      전체 OCR에서 Part No가
-      23124-25120으로 잡힌 경우
-      직접 검색해서 보정
-    */
-    if(!part){
-        const compact = normalize(text).replace(/\s+/g,"");
-        const pm = compact.match(/(\d{5})-?25(\d{3})/);
-        if(pm){
-            part = `${pm[1]}-2S${pm[2]}`;
-        }
-    }
-
-    return {
-        part: part,
-        qty: qty,
-        raw: text
-    };
-}
-
-/* -------------------------------------------------------
-   결과 표시
-------------------------------------------------------- */
-function showResult(part,qty,method,qrRaw,ocrRaw){
-
-    $("resultCard").style.display="block";
-
-    $("partResult").textContent =
-        part || "인식 실패";
-
-    $("qtyResult").textContent =
-        qty != null ? `${qty} EA` : "인식 실패";
-
-    $("methodResult").textContent =
-        method || "-";
-
-    $("qrResult").textContent =
-        qrRaw || "QR 미인식";
-
-    $("ocrResult").textContent =
-        ocrRaw || "OCR 미실행";
-
-    $("partBox").className =
-        "box " + (part ? "ok" : "fail");
-
-    $("qtyBox").className =
-        "box " + (qty != null ? "ok" : "fail");
-}
-
-/* -------------------------------------------------------
-   현재 사진 처리
-------------------------------------------------------- */
-async function processCurrentPhoto(){
-
-    if(!currentDataUrl) return;
-
-    $("resultCard").style.display="none";
-
-    const img = new Image();
-
-    img.onload = async function(){
-
-        let qr = null;
-
-        /*
-          1. BarcodeDetector
-        */
-        qr = await barcodeDetector(img);
-
-        /*
-          2. jsQR
-        */
-        if(!qr){
-            qr = await jsQRSearch(img);
-        }
-
-        if(qr){
-
-            showResult(
-                qr.part,
-                qr.qty,
-                "🟢 QR 인식 성공",
-                qr.raw,
-                null
-            );
-
-            setStatus(
-                "🟢 QR 인식 성공\n\n" +
-                `Part No : ${qr.part}\n` +
-                `Quantity : ${qr.qty} EA`
-            );
-
-            return;
-        }
-
-        /*
-          3. OCR
-        */
-        const ocr = await runOCR(img);
-
-        showResult(
-            ocr.part,
-            ocr.qty,
-            "🟡 OCR 보조 인식",
-            null,
-            ocr.raw
-        );
-
-        if(ocr.part && ocr.qty != null){
-
-            setStatus(
-                "🟡 OCR 인식 성공\n\n" +
-                `Part No : ${ocr.part}\n` +
-                `Quantity : ${ocr.qty} EA`
-            );
-
-        }else{
-
-            setStatus(
-                "🔴 인식 실패\n\n" +
-                "Part No 또는 Quantity를 인식하지 못했습니다.\n" +
-                "식별표가 화면의 60~80%를 차지하도록 가까이 촬영해 주세요."
-            );
-        }
-    };
-
-    img.src = currentDataUrl;
-}
-
-/* -------------------------------------------------------
-   사진 선택
-------------------------------------------------------- */
-$("photo").addEventListener("change",function(e){
-
-    const file = e.target.files[0];
-    if(!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(ev){
-
-        currentDataUrl = ev.target.result;
-
-        $("preview").src = currentDataUrl;
-        $("preview").style.display="block";
-        $("retryBtn").style.display="block";
-
-        processCurrentPhoto();
-    };
-
-    reader.readAsDataURL(file);
-});
-
-/* -------------------------------------------------------
-   초기화
-------------------------------------------------------- */
-function resetApp(){
-
-    currentDataUrl = null;
-
-    $("photo").value="";
-    $("preview").style.display="none";
-    $("retryBtn").style.display="none";
-    $("resultCard").style.display="none";
-
-    setStatus(
-        "사진을 촬영하면 QR을 먼저 시도하고, 실패하면 전체 OCR로 Part No와 Quantity를 읽습니다."
-    );
-}
+document.getElementById('again').onclick=async()=>{
+  stop(stream1); stop(stream2);
+  stream1=stream2=null; glovis=pndt=null;
+  document.getElementById('capture1').style.display='block';
+  document.getElementById('retry1').style.display='none';
+  document.getElementById('gResult').innerHTML='';
+  document.getElementById('status1').innerHTML='';
+  show('step1');
+  stream1=await startCamera(video);
+};
+
+(async()=>{
+  if(!navigator.mediaDevices?.getUserMedia){
+    alert('이 브라우저는 카메라 기능을 지원하지 않습니다. Chrome 또는 Edge에서 HTTPS로 접속해주세요.');
+    return;
+  }
+  stream1=await startCamera(video);
+})();
 </script>
-
 </body>
 </html>
