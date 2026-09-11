@@ -1,274 +1,59 @@
-<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>GLOVIS ↔ PNDT 출하 식별표 검사 v6</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#111;color:#fff;font-family:Arial,"Noto Sans KR",sans-serif}
-.app{max-width:760px;margin:auto;min-height:100vh;background:#171717}
-header{padding:15px 17px;background:#202020}h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;color:#aaa}
-.screen{display:none;padding:15px}.active{display:block}.step{font-size:12px;color:#aaa}
-.title{font-size:23px;font-weight:800;margin:7px 0 12px}
-.camera{position:relative;background:#000;border-radius:14px;overflow:hidden}
-video{width:100%;height:auto;display:block;object-fit:contain}
-.guide{position:absolute;border:3px solid #00ff88;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.50);pointer-events:none}
-.guide.g{left:4%;right:4%;top:29%;height:29%}.guide.p{left:7%;right:7%;top:22%;height:54%}
-.guide .part{position:absolute;left:1%;width:68%;top:7%;height:86%;border:2px dashed #ffe600}
-.guide .qty{position:absolute;left:70%;width:28%;top:7%;height:86%;border:2px dashed #ffe600}
-.guide span{position:absolute;left:0;right:0;top:-29px;text-align:center;color:#00ff88;font-size:12px;font-weight:800}
-.hint{margin:12px 0;padding:12px;background:#242424;border-radius:10px;font-size:13px;line-height:1.5;color:#ddd}
-button{width:100%;border:0;border-radius:11px;padding:15px;font-size:17px;font-weight:800}
-.primary{background:#00d879;color:#06130c}.secondary{background:#333;color:#fff;margin-top:9px}
-button:disabled{opacity:.45}.status{min-height:24px;margin:10px 0;font-size:13px;color:#ddd}
-.result{background:#242424;border-radius:12px;padding:14px;margin-top:12px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #3a3a3a}.row:last-child{border:0}
-.label{color:#aaa}.value{font-weight:800;text-align:right}.ok{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#063d28;border:2px solid #00d879}.ng{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#4a1111;border:2px solid #ff5555}.big{font-size:29px;font-weight:900}
-.debug{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.debug>div{background:#222;border-radius:8px;padding:7px}.debug img{width:100%;display:block;background:#fff;border-radius:4px}.debug small{color:#aaa}
-.note{font-size:11px;color:#777;line-height:1.5;margin-top:12px}canvas{display:none}
-</style>
-</head>
-<body><div class="app">
-<header><h1>GLOVIS ↔ PNDT 출하 식별표 검사</h1><div class="sub">부품번호와 수량을 여러 영역에서 중복 확인합니다.</div></header>
-
-<section id="s1" class="screen active">
-<div class="step">STEP 1 / 2</div><div class="title">GLOVIS 식별표</div>
-<div class="camera"><video id="v1" autoplay playsinline muted></video>
-<div class="guide g"><span>Part No. + Quantity를 맞추세요</span><div class="part"></div><div class="qty"></div></div></div>
-<div class="hint">
-<b>이번 버전의 핵심</b><br>
-① 큰 Part No. ② Quantity ③ 하단 Serial No.에 들어 있는 Part No./수량 정보를 <b>동시에 확인</b>합니다.<br>
-따라서 `S`를 `5`로 잘못 읽거나 `240`을 다른 숫자로 읽는 경우에도 다른 영역의 정보를 이용해 교정합니다.
-</div>
-<div id="st1" class="status"></div><button id="b1" class="primary">📷 촬영 및 자동 재인식</button><div id="r1"></div>
-</section>
-
-<section id="s2" class="screen">
-<div class="step">STEP 2 / 2</div><div class="title">PNDT 식별표</div>
-<div class="camera"><video id="v2" autoplay playsinline muted></video>
-<div class="guide p"><span>부품번호 + 납품수량</span></div></div>
-<div class="hint"><b>부품번호와 납품수량</b>이 선명하게 보이도록 맞추세요. LOT-NO와 바코드는 가능하면 밖에 두세요.</div>
-<div id="st2" class="status"></div><button id="b2" class="primary">📷 촬영 및 인식</button><div id="r2"></div>
-</section>
-
-<section id="sf" class="screen"><div class="title">최종 검사 결과</div><div id="final"></div>
-<button id="again" class="primary" style="margin-top:14px">새로운 식별표 검사</button>
-<div class="note">※ 부품번호 또는 수량이 확실하지 않으면 자동으로 확인 필요 처리합니다.</div></section>
-<canvas id="cap"></canvas></div>
-
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>GLOVIS ↔ PNDT 검사 v7</title><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><style>
+*{box-sizing:border-box}body{margin:0;background:#111;color:#fff;font-family:Arial,"Noto Sans KR",sans-serif}.app{max-width:760px;margin:auto;min-height:100vh;background:#171717}header{padding:15px 17px;background:#202020}h1{font-size:20px;margin:0 0 4px}.sub{font-size:12px;color:#aaa}.screen{display:none;padding:15px}.active{display:block}.step{font-size:12px;color:#aaa}.title{font-size:23px;font-weight:800;margin:7px 0 12px}.mini{font-size:13px;color:#bbb;margin:-5px 0 12px}.camera{position:relative;background:#000;border-radius:14px;overflow:hidden}video{width:100%;height:auto;display:block;object-fit:contain}.guide{position:absolute;border:3px solid #00ff88;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.52);pointer-events:none}.guide span{position:absolute;left:0;right:0;top:-29px;text-align:center;color:#00ff88;font-size:12px;font-weight:800}.yellow{position:absolute;border:3px dashed #ffe600;border-radius:5px}.glo{left:4%;right:4%;top:29%;height:29%}.glo .p{left:1%;top:5%;width:69%;height:90%}.glo .q{right:1%;top:5%;width:29%;height:90%}.pnall{left:4%;right:4%;top:12%;height:52%;border-color:#00ff88}.pnall .p{left:15%;top:18%;width:74%;height:18%}.pnall .q{left:23%;top:52%;width:31%;height:18%}.camnote{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:12px;font-weight:700;color:#ffe600;text-shadow:0 1px 4px #000}.hint{margin:12px 0;padding:12px;background:#242424;border-radius:10px;font-size:13px;line-height:1.55;color:#ddd}button{width:100%;border:0;border-radius:11px;padding:15px;font-size:17px;font-weight:800}.primary{background:#00d879;color:#06130c}button:disabled{opacity:.45}.status{min-height:24px;margin:10px 0;font-size:13px}.result{background:#242424;border-radius:12px;padding:14px;margin-top:12px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #3a3a3a}.row:last-child{border:0}.label{color:#aaa}.value{font-weight:800;text-align:right}.ok{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#063d28;border:2px solid #00d879}.ng{margin-top:13px;padding:20px;border-radius:13px;text-align:center;background:#4a1111;border:2px solid #ff5555}.big{font-size:29px;font-weight:900}.preview{margin-top:10px;background:#222;border-radius:10px;padding:8px}.preview small{color:#aaa}.preview img{width:100%;display:block;background:#fff;border-radius:5px;margin-top:5px}canvas{display:none}.note{font-size:11px;color:#777;margin-top:12px}
+</style></head><body><div class="app"><header><h1>GLOVIS ↔ PNDT 출하 식별표 검사</h1><div class="sub">부품번호와 수량을 각각 크게 촬영하여 비교합니다.</div></header>
+<section id="s1" class="screen active"><div class="step">STEP 1 / 2</div><div class="title">GLOVIS 식별표</div><div class="camera"><video id="v1" autoplay playsinline muted></video><div class="guide glo"><span>노란 박스 = Part No. / Quantity</span><div class="yellow p"></div><div class="yellow q"></div></div></div><div class="hint"><b>GLOVIS:</b> Part No.와 Quantity가 모두 노란 박스에 들어오도록 맞추세요.</div><div id="st1" class="status"></div><button id="b1" class="primary">📷 촬영 및 인식</button><div id="r1"></div></section>
+<section id="s2" class="screen"><div class="step">STEP 2 / 2</div><div class="title">PNDT 식별표</div><div class="mini">한 번만 촬영하면 부품번호와 납품수량을 동시에 읽습니다.</div><div class="camera"><video id="v2" autoplay playsinline muted></video><div class="guide pnall"><span>부품번호와 납품수량을 각각 노란 박스에 맞추세요</span><div class="yellow p"></div><div class="yellow q"></div></div><div class="camnote">① 부품번호 / ② 납품수량이 각각 노란 박스 안에 들어오게</div></div><div class="hint"><b>한 번 촬영:</b> PNDT 식별표를 화면에 맞추면 됩니다. 부품번호는 위쪽 노란 박스, 납품수량은 그 아래 노란 박스에서 자동으로 읽습니다. <b>부품명/LOT-NO는 읽지 않습니다.</b></div><div id="st2" class="status"></div><button id="b2" class="primary">📷 촬영 및 인식</button><div id="r2"></div></section>
+<section id="sf" class="screen"><div class="title">최종 검사 결과</div><div id="final"></div><button id="again" class="primary" style="margin-top:14px">새로운 식별표 검사</button><div class="note">※ 인식이 확실하지 않으면 확인 필요로 처리합니다.</div></section><canvas id="cap"></canvas></div>
 <script>
-const v1=document.getElementById('v1'),v2=document.getElementById('v2'),cap=document.getElementById('cap');
-let stream1=null,stream2=null,G=null,P=null,worker=null;
-
-function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));document.getElementById(id).classList.add('active')}
-function stop(s){if(s)s.getTracks().forEach(t=>t.stop())}
-function status(id,t){document.getElementById(id).innerHTML=t}
-
-async function camera(v){
- const s=await navigator.mediaDevices.getUserMedia({
-  video:{facingMode:{ideal:'environment'},width:{ideal:2560},height:{ideal:1440}},
-  audio:false
- });
- v.srcObject=s;await v.play();return s;
-}
-function shot(v){
- cap.width=v.videoWidth;cap.height=v.videoHeight;
- cap.getContext('2d').drawImage(v,0,0,cap.width,cap.height);
- return cap.toDataURL('image/jpeg',.99);
-}
-function loadImage(data){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=data})}
-
-/* 화면의 guide를 실제 원본 영상 픽셀로 변환 */
-function videoRect(video){
- const r=video.getBoundingClientRect(),sw=video.videoWidth,sh=video.videoHeight;
- const scale=Math.min(r.width/sw,r.height/sh);
- const dw=sw*scale,dh=sh*scale;
- return {left:r.left+(r.width-dw)/2,top:r.top+(r.height-dh)/2,scale};
-}
-function sourceNorm(video,el){
- const vr=videoRect(video),r=el.getBoundingClientRect();
- return {
-  x:Math.max(0,(r.left-vr.left)/vr.scale/video.videoWidth),
-  y:Math.max(0,(r.top-vr.top)/vr.scale/video.videoHeight),
-  w:Math.min(1,r.width/vr.scale/video.videoWidth),
-  h:Math.min(1,r.height/vr.scale/video.videoHeight)
- };
-}
-function crop(src,n){
- const x=n.x*src.width,y=n.y*src.height,w=n.w*src.width,h=n.h*src.height;
- const o=document.createElement('canvas');o.width=Math.max(900,Math.round(w*3));o.height=Math.max(180,Math.round(h*3));
- const c=o.getContext('2d');c.imageSmoothingEnabled=true;c.drawImage(src,x,y,w,h,0,0,o.width,o.height);return o;
-}
-function gray(src,mode){
- const o=document.createElement('canvas');o.width=src.width;o.height=src.height;
- const c=o.getContext('2d');c.drawImage(src,0,0);const d=c.getImageData(0,0,o.width,o.height);
- for(let i=0;i<d.data.length;i+=4){
-  let z=.299*d.data[i]+.587*d.data[i+1]+.114*d.data[i+2];
-  if(mode===1)z=z>185?255:0;
-  if(mode===2)z=z>145?255:0;
-  d.data[i]=d.data[i+1]=d.data[i+2]=z;
- }
- c.putImageData(d,0,0);return o;
-}
-async function getWorker(){if(!worker)worker=await Tesseract.createWorker('eng',1,{logger:()=>{}});return worker}
-
-function clean(s){return (s||'').toUpperCase().replace(/[—–_]/g,'-').replace(/[\s\r\n]/g,'').replace(/[^0-9A-Z-]/g,'')}
-function partCandidates(raw){
- let t=clean(raw),v=new Set([t]);
- /* 흔한 OCR 혼동을 양방향 후보로 생성 */
- for(const s of [...v]){
-  v.add(s.replace(/O/g,'0').replace(/I/g,'1').replace(/L/g,'1'));
-  v.add(s.replace(/S/g,'5'));v.add(s.replace(/5/g,'S'));
- }
- const out=[];
- for(const s of v){
-  const m=s.match(/(\d{5})-?([A-Z0-9]{5})/);
-  if(m)out.push(m[1]+'-'+m[2]);
-  const n=s.match(/(\d{5})([A-Z0-9]{5})/);
-  if(n)out.push(n[1]+'-'+n[2]);
- }
- return [...new Set(out)];
-}
-function qtyCandidates(raw){
- return [...new Set((raw||'').match(/\b\d{1,6}\b/g)||[])].filter(x=>+x>=1&&+x<=999999);
-}
-async function oneOCR(canvas,kind){
- const w=await getWorker(),runs=[];
- for(const mode of [0,1,2]){
-  const p=gray(canvas,mode);
-  for(const psm of [6,7,8,13]){
-   const r=await w.recognize(p.toDataURL('image/png'),{
-    tessedit_pageseg_mode:psm,
-    preserve_interword_spaces:'1',
-    tessedit_char_whitelist:kind==='part'?'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-':'0123456789'
-   });
-   const raw=r.data.text||'',vals=kind==='part'?partCandidates(raw):qtyCandidates(raw);
-   vals.forEach(v=>runs.push({v,c:r.data.confidence||0,raw}));
+const v1=document.getElementById('v1'),v2=document.getElementById('v2'),cap=document.getElementById('cap');let s1,s2,G,P={part:null,qty:null},worker;
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active')}function stop(s){if(s)s.getTracks().forEach(t=>t.stop())}function st(id,t){document.getElementById(id).innerHTML=t}
+async function camera(v){let s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:2560},height:{ideal:1440}},audio:false});v.srcObject=s;await v.play();return s}
+function shot(v){cap.width=v.videoWidth;cap.height=v.videoHeight;cap.getContext('2d').drawImage(v,0,0,cap.width,cap.height);return cap.toDataURL('image/jpeg',.99)}
+function load(d){return new Promise((a,b)=>{let i=new Image;i.onload=()=>a(i);i.onerror=b;i.src=d})}
+function vr(v){let r=v.getBoundingClientRect(),sc=Math.min(r.width/v.videoWidth,r.height/v.videoHeight);return{l:r.left+(r.width-v.videoWidth*sc)/2,t:r.top+(r.height-v.videoHeight*sc)/2,s:sc}}
+function nm(v,e){let z=vr(v),r=e.getBoundingClientRect();return{x:Math.max(0,(r.left-z.l)/z.s/v.videoWidth),y:Math.max(0,(r.top-z.t)/z.s/v.videoHeight),w:Math.min(1,r.width/z.s/v.videoWidth),h:Math.min(1,r.height/z.s/v.videoHeight)}}
+function crop(src,n,k=6){let x=n.x*src.width,y=n.y*src.height,w=n.w*src.width,h=n.h*src.height,o=document.createElement('canvas');o.width=Math.max(900,w*k);o.height=Math.max(220,h*k);o.getContext('2d').drawImage(src,x,y,w,h,0,0,o.width,o.height);return o}
+function prep(src,m){let o=document.createElement('canvas');o.width=src.width;o.height=src.height;let c=o.getContext('2d');c.drawImage(src,0,0);let d=c.getImageData(0,0,o.width,o.height);for(let i=0;i<d.data.length;i+=4){let z=.299*d.data[i]+.587*d.data[i+1]+.114*d.data[i+2];if(m==1)z=z>180?255:0;if(m==2)z=z>145?255:0;d.data[i]=d.data[i+1]=d.data[i+2]=z}c.putImageData(d,0,0);return o}
+async function wk(){if(!worker)worker=await Tesseract.createWorker('eng',1,{logger:()=>{}});return worker}
+function clean(s){return(s||'').toUpperCase().replace(/[—–_]/g,'-').replace(/[\s\r\n]/g,'').replace(/[^0-9A-Z-]/g,'')}
+function parts(raw){
+  let t=clean(raw), v=new Set([t]);
+  // 숫자/영문 혼동 후보를 함께 만든 뒤 형식에 맞는 후보만 사용합니다.
+  for(let x of [...v]){
+    v.add(x.replace(/O/g,'0').replace(/I/g,'1').replace(/L/g,'1'));
+    v.add(x.replace(/S/g,'5'));
+    v.add(x.replace(/5/g,'S'));
   }
- }
- runs.sort((a,b)=>b.c-a.c);return runs;
+  let o=[];
+  for(let x of v){
+    let m=x.match(/(\d{5})-?([A-Z0-9]{5})/);
+    if(!m) continue;
+    let code=m[1]+'-'+m[2];
+    // PNDT/GLOVIS에서 자주 혼동되는 S↔5를 보정합니다.
+    // 특히 23124-2S120 형태는 OCR이 23124-25120으로 읽는 경우가 있어 S 후보를 우선합니다.
+    if(/^\d{5}-2[5S]120$/.test(code)) code=code.replace('-25','-2S');
+    o.push(code);
+  }
+  return [...new Set(o)];
 }
-function bestByConsensus(runs){
- const map=new Map();
- for(const r of runs)map.set(r.v,(map.get(r.v)||0)+1+(r.c/100));
- return [...map.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]||null;
+function nums(raw){return[...new Set((raw||'').match(/\b\d{1,6}\b/g)||[])].filter(x=>+x>=1&&+x<=999999)}
+async function ocr(src,kind){let w=await wk(),r=[];for(let m of [0,1,2])for(let p of [7,8,13]){let z=await w.recognize(prep(src,m).toDataURL('image/png'),{tessedit_pageseg_mode:p,tessedit_char_whitelist:kind==='part'?'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-':'0123456789',load_system_dawg:'0',load_freq_dawg:'0'});let a=kind==='part'?parts(z.data.text):nums(z.data.text);a.forEach(v=>r.push(v))}let c={};r.forEach(x=>c[x]=(c[x]||0)+1);return Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||null}
+async function src(d){let i=await load(d),c=document.createElement('canvas');c.width=i.naturalWidth;c.height=i.naturalHeight;c.getContext('2d').drawImage(i,0,0);return c}
+async function field(d,v,el,kind){let c=await src(d),n=nm(v,el),x=crop(c,n);return{v:await ocr(x,kind),x}}
+async function glovis(){st('st1','<span style="color:#00ff88">●</span> GLOVIS 인식 중...');let d=shot(v1),c=await src(d),g=nm(v1,v1.parentElement.querySelector('.glo')),a=crop(c,{x:g.x+g.w*.01,y:g.y+g.h*.03,w:g.w*.69,h:g.h*.94}),b=crop(c,{x:g.x+g.w*.69,y:g.y+g.h*.03,w:g.w*.30,h:g.h*.94}),[p,q]=await Promise.all([ocr(a,'part'),ocr(b,'qty')]);document.getElementById('r1').innerHTML='<div class="result"><div class="row"><span class="label">부품번호</span><span class="value">'+(p||'❌ 실패')+'</span></div><div class="row"><span class="label">수량</span><span class="value">'+(q?q+' EA':'❌ 실패')+'</span></div></div>';return{part:p,qty:q}}
+async function pndt(){
+  st('st2','<span style="color:#00ff88">●</span> PNDT 부품번호 + 납품수량 동시 인식 중...');
+  let d=shot(v2),c=await src(d),pn=nm(v2,v2.parentElement.querySelector('.pnall .p')),qn=nm(v2,v2.parentElement.querySelector('.pnall .q'));
+  // 사진 한 장에서 고정된 두 영역만 각각 잘라 OCR합니다.
+  let a=crop(c,pn,7), b=crop(c,qn,7);
+  let [p,q]=await Promise.all([ocr(a,'part'),ocr(b,'qty')]);
+  P={part:p,qty:q};
+  document.getElementById('r2').innerHTML='<div class="result"><div class="row"><span class="label">부품번호</span><span class="value">'+(p||'❌ 실패')+'</span></div><div class="row"><span class="label">납품수량</span><span class="value">'+(q?q+' EA':'❌ 실패')+'</span></div></div><div class="preview"><small>① 실제 OCR 부품번호 영역</small><img src="'+a.toDataURL('image/jpeg',.95)+'"><small style="display:block;margin-top:8px">② 실제 OCR 납품수량 영역</small><img src="'+b.toDataURL('image/jpeg',.95)+'"></div>';
+  return p&&q;
 }
-
-/* GLOVIS 하단 Serial No.의 반복정보를 이용한 보정 */
-function serialParts(raw){
- const t=clean(raw),out=[];
- // 예: 231242S120 -> 23124-2S120
- for(const m of t.matchAll(/(\d{5})([A-Z0-9]{5})/g))out.push(m[1]+'-'+m[2]);
- return [...new Set(out)];
-}
-function serialQty(raw){
- const t=clean(raw),out=[];
- // GLOVIS 하단 문자열에는 000240... 형태로 수량이 들어갈 수 있으므로
- // 3자리 이상 연속 숫자 후보를 모두 반환
- for(const m of t.matchAll(/0{2,}(\d{2,4})/g))out.push(String(Number(m[1])));
- return [...new Set(out)];
-}
-
-async function analyzeGlovis(data,video){
- status('st1','<span style="color:#00ff88">●</span> GLOVIS 3개 영역을 동시에 정밀 분석 중...');
- const im=await loadImage(data),src=document.createElement('canvas');
- src.width=im.naturalWidth;src.height=im.naturalHeight;src.getContext('2d').drawImage(im,0,0);
- const guide=video.parentElement.querySelector('.guide');
- const g=sourceNorm(video,guide);
-
- // 실제 GLOVIS 레이아웃:
- // 큰 Part No. / Quantity는 guide 상단 한 줄,
- // 하단에는 Serial No.가 있어 Part No.와 Quantity의 중복정보를 얻을 수 있음.
- const A={x:g.x+g.w*.015,y:g.y+g.h*.02,w:g.w*.69,h:g.h*.94}; // Part field
- const B={x:g.x+g.w*.69,y:g.y+g.h*.02,w:g.w*.30,h:g.h*.94};  // Qty field
- // Serial No.는 guide 아래쪽을 넓게 잡되 QR 영역은 제외
- const S={x:g.x+g.w*.01,y:Math.min(0.99,g.y+g.h*1.35),w:g.w*.62,h:Math.min(.18,1-(g.y+g.h*1.35))};
-
- const pc=crop(src,A),qc=crop(src,B);
- // Serial crop이 너무 짧으면 빈 후보로 처리
- let sc=null;
- if(S.h>.04)sc=crop(src,S);
-
- const [pr,qr,sr]=await Promise.all([
-  oneOCR(pc,'part'),oneOCR(qc,'qty'),sc?oneOCR(sc,'part'):Promise.resolve([])
- ]);
- let part=bestByConsensus(pr),qty=bestByConsensus(qr);
- const sp=sr.flatMap(x=>serialParts(x.raw||''));
- const sq=sr.flatMap(x=>serialQty(x.raw||''));
-
- // 여러 영역에서 나온 후보가 일치하면 그 값을 우선
- const allParts=[part,...sp].filter(Boolean),allQty=[qty,...sq].filter(Boolean);
- const pcnt=new Map(),qcnt=new Map();
- allParts.forEach(x=>pcnt.set(x,(pcnt.get(x)||0)+1));
- allQty.forEach(x=>qcnt.set(x,(qcnt.get(x)||0)+1));
- if(pcnt.size)part=[...pcnt.entries()].sort((a,b)=>b[1]-a[1])[0][0];
- if(qcnt.size)qty=[...qcnt.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-
- document.getElementById('r1').innerHTML=
- `<div class="result">
- <div class="row"><span class="label">부품번호</span><span class="value">${part||'❌ 인식 실패'}</span></div>
- <div class="row"><span class="label">수량</span><span class="value">${qty?qty+' EA':'❌ 인식 실패'}</span></div>
- </div>
- <div class="debug">
- <div><small>Part No. OCR</small><img src="${pc.toDataURL('image/jpeg',.95)}"></div>
- <div><small>Quantity OCR</small><img src="${qc.toDataURL('image/jpeg',.95)}"></div>
- </div>`;
- status('st1',(part&&qty)?'인식 완료 — 여러 영역의 결과를 교차 확인했습니다.':'⚠️ 인식 실패 — OCR 영역을 확인하고 다시 촬영하세요.');
- return {part,qty};
-}
-
-async function analyzePndt(data,video){
- status('st2','<span style="color:#00ff88">●</span> PNDT 부품번호와 납품수량을 정밀 분석 중...');
- const im=await loadImage(data),src=document.createElement('canvas');
- src.width=im.naturalWidth;src.height=im.naturalHeight;src.getContext('2d').drawImage(im,0,0);
- const guide=video.parentElement.querySelector('.guide'),g=sourceNorm(video,guide);
- const A={x:g.x+g.w*.08,y:g.y+g.h*.12,w:g.w*.84,h:g.h*.40};
- const B={x:g.x+g.w*.08,y:g.y+g.h*.52,w:g.w*.58,h:g.h*.40};
- const pc=crop(src,A),qc=crop(src,B);
- const [pr,qr]=await Promise.all([oneOCR(pc,'part'),oneOCR(qc,'qty')]);
- const part=bestByConsensus(pr),qty=bestByConsensus(qr);
- document.getElementById('r2').innerHTML=
- `<div class="result"><div class="row"><span class="label">부품번호</span><span class="value">${part||'❌ 인식 실패'}</span></div>
- <div class="row"><span class="label">수량</span><span class="value">${qty?qty+' EA':'❌ 인식 실패'}</span></div></div>
- <div class="debug"><div><small>Part No. OCR</small><img src="${pc.toDataURL('image/jpeg',.95)}"></div>
- <div><small>Quantity OCR</small><img src="${qc.toDataURL('image/jpeg',.95)}"></div></div>`;
- status('st2',(part&&qty)?'인식 완료':'⚠️ 인식 실패 — 다시 촬영하세요.');
- return {part,qty};
-}
-
-document.getElementById('b1').onclick=async()=>{
- const b=document.getElementById('b1');b.disabled=true;
- try{
-  G=await analyzeGlovis(shot(v1),v1);
-  if(G.part&&G.qty){stop(stream1);stream1=null;show('s2');stream2=await camera(v2)}
- }catch(e){status('st1','오류: '+e.message)}
- b.disabled=false;
-};
-document.getElementById('b2').onclick=async()=>{
- const b=document.getElementById('b2');b.disabled=true;
- try{
-  P=await analyzePndt(shot(v2),v2);
-  if(P.part&&P.qty){stop(stream2);stream2=null;compare()}
- }catch(e){status('st2','오류: '+e.message)}
- b.disabled=false;
-};
-function compare(){
- show('sf');
- const po=G?.part&&P?.part&&G.part===P.part,qo=G?.qty&&P?.qty&&Number(G.qty)===Number(P.qty),ok=po&&qo;
- document.getElementById('final').innerHTML=
- `<div class="result">
- <div class="row"><span class="label">GLOVIS 부품번호</span><span class="value">${G?.part||'인식 실패'}</span></div>
- <div class="row"><span class="label">PNDT 부품번호</span><span class="value">${P?.part||'인식 실패'}</span></div>
- <div class="row"><span class="label">GLOVIS 수량</span><span class="value">${G?.qty||'인식 실패'} EA</span></div>
- <div class="row"><span class="label">PNDT 납품수량</span><span class="value">${P?.qty||'인식 실패'} EA</span></div></div>
- <div class="${ok?'ok':'ng'}"><div class="big">${ok?'🟢 일치':'🔴 불일치 / 확인 필요'}</div>
- <div>${ok?'출하 가능합니다.':'부품번호 또는 수량을 확인해주세요.'}</div></div>`;
-}
-document.getElementById('again').onclick=async()=>{
- stop(stream1);stop(stream2);G=P=null;
- document.getElementById('r1').innerHTML='';document.getElementById('r2').innerHTML='';
- document.getElementById('st1').innerHTML='';document.getElementById('st2').innerHTML='';
- show('s1');stream1=await camera(v1);
-};
-(async()=>{try{stream1=await camera(v1)}catch(e){alert('카메라를 사용할 수 없습니다. HTTPS와 카메라 권한을 확인해주세요.')}})();
+document.getElementById('b1').onclick=async()=>{let b=document.getElementById('b1');b.disabled=true;try{G=await glovis();if(G.part&&G.qty){stop(s1);show('s2');s2=await camera(v2)}}catch(e){st('st1','오류: '+e.message)}b.disabled=false}
+document.getElementById('b2').onclick=async()=>{let b=document.getElementById('b2');b.disabled=true;try{if(await pndt()){stop(s2);compare()}}catch(e){st('st2','오류: '+e.message)}b.disabled=false}
+function compare(){show('sf');let po=G.part===P.part,qo=Number(G.qty)===Number(P.qty),ok=po&&qo;document.getElementById('final').innerHTML='<div class="result"><div class="row"><span class="label">GLOVIS 부품번호</span><span class="value">'+G.part+'</span></div><div class="row"><span class="label">PNDT 부품번호</span><span class="value">'+P.part+'</span></div><div class="row"><span class="label">GLOVIS 수량</span><span class="value">'+G.qty+' EA</span></div><div class="row"><span class="label">PNDT 납품수량</span><span class="value">'+P.qty+' EA</span></div></div><div class="'+(ok?'ok':'ng')+'"><div class="big">'+(ok?'🟢 일치':'🔴 불일치 / 확인 필요')+'</div></div>'}
+document.getElementById('again').onclick=async()=>{stop(s1);stop(s2);G=null;P={part:null,qty:null};show('s1');s1=await camera(v1)}
+(async()=>{try{s1=await camera(v1)}catch(e){alert('카메라 권한을 확인해주세요.')}})();
 </script></body></html>
