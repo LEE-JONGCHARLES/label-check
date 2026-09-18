@@ -2,271 +2,397 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
-<title>GLOVIS 식별표 OCR 테스트</title>
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0">
+
+<title>GLOVIS 식별표 자동 검사</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
+
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  background: #111;
-  color: #fff;
-  font-family: Arial, sans-serif;
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
 }
 
 .container {
-  max-width: 900px;
-  margin: auto;
-  padding: 20px;
+    max-width: 900px;
+    margin: auto;
+    padding: 16px;
 }
 
 h1 {
-  margin-bottom: 5px;
+    margin: 0 0 6px;
+    font-size: 28px;
 }
 
 .subtitle {
-  color: #aaa;
-  margin-bottom: 20px;
+    color: #aaa;
+    margin-bottom: 18px;
 }
 
 .card {
-  background: #1e1e1e;
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 16px;
+    background: #1e1e1e;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 15px;
 }
+
+/* 버튼 */
 
 button,
 .file-label {
-  display: inline-block;
-  border: 0;
-  border-radius: 12px;
-  padding: 14px 20px;
-  margin: 5px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
+
+    display: inline-block;
+
+    border: 0;
+    border-radius: 12px;
+
+    padding: 14px 18px;
+
+    margin: 4px;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    cursor: pointer;
 }
 
 button {
-  background: #00d084;
-  color: #000;
+    background: #00d084;
+    color: #000;
 }
 
 button.secondary,
 .file-label {
-  background: #333;
-  color: #fff;
+    background: #333;
+    color: #fff;
 }
 
 button:disabled {
-  opacity: 0.4;
+    opacity: 0.4;
 }
 
+
+/* 카메라 */
+
 .camera {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  background: #000;
-  border-radius: 14px;
-  overflow: hidden;
+
+    position: relative;
+
+    width: 100%;
+
+    aspect-ratio: 3 / 4;
+
+    background: #000;
+
+    border-radius: 14px;
+
+    overflow: hidden;
 }
 
 .camera video,
 .camera img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+
+    display: block;
 }
 
-/* 촬영 가이드 */
-.guide {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
 
-/* 식별표 전체 */
+/* 전체 식별표 가이드 */
+
 .outer-guide {
-  position: absolute;
-  left: 5%;
-  right: 5%;
-  top: 12%;
-  height: 65%;
 
-  border: 3px solid #00e889;
-  border-radius: 10px;
+    position: absolute;
 
-  box-shadow:
-    0 0 0 9999px rgba(0,0,0,0.30);
+    left: 5%;
+    right: 5%;
+
+    top: 10%;
+
+    height: 70%;
+
+    border: 3px solid #00e889;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 0 0 9999px
+        rgba(0,0,0,0.30);
+
+    pointer-events: none;
 }
+
 
 /*
- GLOVIS 실제 사진 기준
+    GLOVIS 실제 식별표 기준
 
- Part No.
- x ≈ 18% ~ 49%
- y ≈ 27% ~ 33%
+    Part No.
+    약 x 11% ~ 62%
+    약 y 26% ~ 35%
 
- Quantity
- x ≈ 58% ~ 65%
- y ≈ 27% ~ 33%
+    Quantity
+    약 x 52% ~ 74.5%
+    약 y 26% ~ 35%
+
+    기존보다 약 1.5배 넓게 잡음
 */
 
-/* Part No 노란 박스 */
+
+/* Part No */
+
 .part-guide {
-  position: absolute;
 
-  left: 17%;
-  top: 27%;
-  width: 34%;
-  height: 7%;
+    position: absolute;
 
-  border: 4px solid #ffe600;
-  border-radius: 7px;
+    left: 11%;
+    top: 26%;
 
-  background: rgba(255,230,0,0.08);
-  box-shadow: 0 0 10px rgba(255,230,0,0.7);
+    width: 51%;
+    height: 9%;
+
+    border: 4px solid #ffe600;
+
+    border-radius: 7px;
+
+    background:
+        rgba(255,230,0,0.08);
+
+    box-shadow:
+        0 0 10px
+        rgba(255,230,0,0.7);
+
+    pointer-events: none;
 }
 
-/* Quantity 노란 박스 */
+
+/* Quantity */
+
 .qty-guide {
-  position: absolute;
 
-  left: 56%;
-  top: 27%;
-  width: 15%;
-  height: 7%;
+    position: absolute;
 
-  border: 4px solid #ffe600;
-  border-radius: 7px;
+    left: 52%;
+    top: 26%;
 
-  background: rgba(255,230,0,0.08);
-  box-shadow: 0 0 10px rgba(255,230,0,0.7);
+    width: 22.5%;
+    height: 9%;
+
+    border: 4px solid #ffe600;
+
+    border-radius: 7px;
+
+    background:
+        rgba(255,230,0,0.08);
+
+    box-shadow:
+        0 0 10px
+        rgba(255,230,0,0.7);
+
+    pointer-events: none;
 }
+
 
 .guide-label {
-  position: absolute;
-  color: #ffe600;
-  font-weight: bold;
-  font-size: 14px;
 
-  text-shadow: 0 1px 4px #000;
+    position: absolute;
+
+    color: #ffe600;
+
+    font-weight: bold;
+
+    font-size: 14px;
+
+    text-shadow:
+        0 1px 4px #000;
+
+    pointer-events: none;
 }
 
 .part-label {
-  left: 17%;
-  top: 24%;
+
+    left: 11%;
+    top: 22%;
 }
 
 .qty-label {
-  left: 56%;
-  top: 24%;
+
+    left: 52%;
+    top: 22%;
 }
+
+
+/* 안내 */
 
 .note {
-  color: #aaa;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-top: 12px;
+
+    color: #aaa;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    margin-top: 12px;
 }
 
+
+/* 진행률 */
+
 .progress {
-  width: 100%;
-  height: 8px;
-  background: #333;
-  border-radius: 10px;
-  overflow: hidden;
-  margin: 10px 0;
+
+    width: 100%;
+
+    height: 7px;
+
+    background: #333;
+
+    border-radius: 10px;
+
+    overflow: hidden;
+
+    margin: 10px 0;
 }
 
 .progress-bar {
-  width: 0%;
-  height: 100%;
-  background: #00d084;
+
+    width: 0%;
+
+    height: 100%;
+
+    background: #00d084;
 }
 
+
+/* 결과 */
+
 .result {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr;
+
+    gap: 12px;
 }
 
 .result-box {
-  background: #292929;
-  padding: 18px;
-  border-radius: 12px;
+
+    background: #292929;
+
+    padding: 16px;
+
+    border-radius: 12px;
 }
 
 .result-title {
-  color: #aaa;
-  font-size: 15px;
+
+    color: #aaa;
+
+    font-size: 15px;
 }
 
 .result-value {
-  margin-top: 6px;
-  font-size: 27px;
-  font-weight: bold;
+
+    margin-top: 6px;
+
+    font-size: 27px;
+
+    font-weight: bold;
 }
 
 .ok {
-  color: #00e889;
+    color: #00e889;
 }
 
 .fail {
-  color: #ff6666;
+    color: #ff6666;
 }
 
+
+/* OCR 영역 */
+
 .preview-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr;
+
+    gap: 12px;
 }
 
 .preview-grid img {
-  width: 100%;
-  background: #000;
-  border-radius: 10px;
+
+    width: 100%;
+
+    background: #000;
+
+    border-radius: 10px;
+
+    margin-top: 6px;
 }
 
+
+/* 원문 */
+
 pre {
-  background: #090909;
-  padding: 14px;
-  border-radius: 10px;
-  white-space: pre-wrap;
-  color: #bbb;
-  min-height: 80px;
+
+    background: #090909;
+
+    padding: 14px;
+
+    border-radius: 10px;
+
+    white-space: pre-wrap;
+
+    color: #bbb;
+
+    min-height: 80px;
 }
+
+
+/* 모바일 */
 
 @media(max-width:650px) {
 
-  .container {
-    padding: 12px;
-  }
+    .container {
+        padding: 10px;
+    }
 
-  .result,
-  .preview-grid {
-    grid-template-columns: 1fr;
-  }
+    .result {
+        grid-template-columns: 1fr;
+    }
 
-  .result-value {
-    font-size: 22px;
-  }
+    .preview-grid {
+        grid-template-columns: 1fr;
+    }
 
-  button,
-  .file-label {
-    width: 100%;
-    margin: 4px 0;
-  }
+    button,
+    .file-label {
+        width: 100%;
+        margin: 4px 0;
+    }
+
+    .result-value {
+        font-size: 23px;
+    }
+
 }
+
 </style>
 </head>
 
@@ -275,1183 +401,1368 @@ pre {
 
 <div class="container">
 
-<h1>GLOVIS 식별표 OCR</h1>
+
+<h1>GLOVIS 식별표 자동 검사</h1>
 
 <div class="subtitle">
-Part No.와 Quantity만 정밀하게 인식합니다.
+식별표를 맞추고 촬영하면 자동으로 인식합니다.
 </div>
 
 
 <!-- 버튼 -->
+
 <div class="card">
 
-<button id="sampleBtn">
-샘플 사진 테스트
-</button>
+    <label class="file-label">
 
-<label class="file-label">
-사진 첨부
-<input
-  id="fileInput"
-  type="file"
-  accept="image/*"
-  style="display:none">
-</label>
+        📷 사진 첨부
 
-<button
-  id="cameraBtn"
-  class="secondary">
-카메라 시작
-</button>
+        <input
+            id="fileInput"
+            type="file"
+            accept="image/*"
+            style="display:none">
 
-<button
-  id="captureBtn"
-  disabled>
-촬영
-</button>
+    </label>
+
+
+    <button
+        id="cameraBtn"
+        class="secondary">
+
+        📱 카메라 시작
+
+    </button>
+
+
+    <button
+        id="captureBtn"
+        disabled>
+
+        촬영
+
+    </button>
 
 </div>
 
 
-<!-- 카메라 / 사진 -->
+<!-- 카메라 -->
+
 <div class="card">
 
-<div class="camera">
+    <div class="camera">
 
-<video
-  id="video"
-  autoplay
-  playsinline
-  muted
-  style="display:none">
-</video>
+        <video
+            id="video"
+            autoplay
+            playsinline
+            muted
+            style="display:none">
+        </video>
 
-<img
-  id="photo"
-  style="display:none">
 
-<div class="guide">
+        <img
+            id="photo"
+            style="display:none">
 
-<div class="outer-guide"></div>
 
-<div class="guide-label part-label">
-① Part No.
+        <div class="outer-guide"></div>
+
+
+        <div class="guide-label part-label">
+            ① Part No.
+        </div>
+
+
+        <div class="guide-label qty-label">
+            ② Quantity
+        </div>
+
+
+        <div class="part-guide"></div>
+
+
+        <div class="qty-guide"></div>
+
+    </div>
+
+
+    <div class="note">
+
+        식별표 전체를 초록색 영역에 맞춰주세요.<br>
+
+        <b>Part No.</b>와
+        <b>Quantity</b>가 노란 박스 안에 들어오도록 한 후 촬영하세요.<br>
+
+        촬영하면 OCR이 자동으로 실행됩니다.
+
+    </div>
+
 </div>
 
-<div class="guide-label qty-label">
-② Quantity
-</div>
 
-<div class="part-guide"></div>
+<!-- OCR 진행 -->
 
-<div class="qty-guide"></div>
-
-</div>
-
-</div>
-
-
-<div class="note">
-
-<b>촬영 방법</b><br>
-① 식별표 전체가 초록색 영역 안에 들어오도록 합니다.<br>
-② <b>23124-2S120</b>가 왼쪽 노란 박스 안에 들어오게 합니다.<br>
-③ <b>240</b>이 오른쪽 노란 박스 안에 들어오게 합니다.<br>
-④ 사진을 첨부해도 동일한 OCR 처리를 합니다.
-
-</div>
-
-</div>
-
-
-<!-- OCR -->
 <div class="card">
 
-<button id="ocrBtn" disabled>
-OCR 실행
-</button>
+    <div class="progress">
 
-<div class="progress">
-<div
-  id="progressBar"
-  class="progress-bar">
-</div>
-</div>
+        <div
+            id="progressBar"
+            class="progress-bar">
+        </div>
 
-<div id="status">
-사진을 선택하거나 카메라로 촬영하세요.
-</div>
+    </div>
+
+
+    <div id="status">
+
+        사진을 첨부하거나 카메라로 촬영하세요.
+
+    </div>
 
 </div>
 
 
 <!-- 결과 -->
+
 <div class="card">
 
-<h2>최종 인식 결과</h2>
-
-<div class="result">
-
-<div class="result-box">
-
-<div class="result-title">
-Part No.
-</div>
-
-<div
-  id="partResult"
-  class="result-value">
--
-</div>
-
-</div>
+    <h2>검사 결과</h2>
 
 
-<div class="result-box">
+    <div class="result">
 
-<div class="result-title">
-Quantity
-</div>
 
-<div
-  id="qtyResult"
-  class="result-value">
--
-</div>
+        <div class="result-box">
 
-</div>
+            <div class="result-title">
+                GLOVIS Part No.
+            </div>
 
-</div>
+            <div
+                id="partResult"
+                class="result-value">
+
+                -
+
+            </div>
+
+        </div>
+
+
+        <div class="result-box">
+
+            <div class="result-title">
+                GLOVIS Quantity
+            </div>
+
+            <div
+                id="qtyResult"
+                class="result-value">
+
+                -
+
+            </div>
+
+        </div>
+
+
+    </div>
 
 </div>
 
 
 <!-- OCR 원문 -->
+
 <div class="card">
 
-<h2>OCR 원문</h2>
+    <h2>OCR 원문</h2>
 
-<pre id="rawResult">-</pre>
+    <pre id="rawResult">-</pre>
 
 </div>
 
 
-<!-- 실제 OCR 영역 -->
+<!-- 실제 잘라낸 영역 -->
+
 <div class="card">
 
-<h2>실제 OCR 영역</h2>
+    <h2>실제 OCR 영역</h2>
 
-<div class="preview-grid">
 
-<div>
-<div>Part No. 영역</div>
+    <div class="preview-grid">
 
-<img
-  id="partPreview">
+
+        <div>
+
+            <div>
+                Part No. 영역
+            </div>
+
+            <img
+                id="partPreview">
+
+        </div>
+
+
+        <div>
+
+            <div>
+                Quantity 영역
+            </div>
+
+            <img
+                id="qtyPreview">
+
+        </div>
+
+
+    </div>
+
 </div>
 
 
-<div>
-<div>Quantity 영역</div>
-
-<img
-  id="qtyPreview">
 </div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<canvas
-  id="canvas"
-  style="display:none">
-</canvas>
 
 
 <script>
 
+
+/* =========================
+   기본 변수
+========================= */
+
 const video =
-  document.getElementById("video");
+    document.getElementById("video");
 
 const photo =
-  document.getElementById("photo");
+    document.getElementById("photo");
 
 const fileInput =
-  document.getElementById("fileInput");
+    document.getElementById("fileInput");
 
 const cameraBtn =
-  document.getElementById("cameraBtn");
+    document.getElementById("cameraBtn");
 
 const captureBtn =
-  document.getElementById("captureBtn");
-
-const sampleBtn =
-  document.getElementById("sampleBtn");
-
-const ocrBtn =
-  document.getElementById("ocrBtn");
-
-const canvas =
-  document.getElementById("canvas");
-
-const statusEl =
-  document.getElementById("status");
+    document.getElementById("captureBtn");
 
 const progressBar =
-  document.getElementById("progressBar");
+    document.getElementById("progressBar");
+
+const statusEl =
+    document.getElementById("status");
 
 const partResult =
-  document.getElementById("partResult");
+    document.getElementById("partResult");
 
 const qtyResult =
-  document.getElementById("qtyResult");
+    document.getElementById("qtyResult");
 
 const rawResult =
-  document.getElementById("rawResult");
+    document.getElementById("rawResult");
 
 const partPreview =
-  document.getElementById("partPreview");
+    document.getElementById("partPreview");
 
 const qtyPreview =
-  document.getElementById("qtyPreview");
+    document.getElementById("qtyPreview");
 
 
 let currentImage = null;
+
 let cameraStream = null;
 
 
-/* 상태 */
-function setStatus(text, progress) {
+/* =========================
+   상태 표시
+========================= */
 
-  statusEl.textContent = text;
+function setStatus(
+    text,
+    progress = null
+) {
 
-  if (progress !== undefined) {
-    progressBar.style.width =
-      progress + "%";
-  }
+    statusEl.textContent =
+        text;
+
+
+    if (progress !== null) {
+
+        progressBar.style.width =
+            progress + "%";
+
+    }
 
 }
 
 
-/* 이미지 로드 */
+/* =========================
+   이미지 로드
+========================= */
+
 function loadImage(src) {
 
-  return new Promise((resolve, reject) => {
+    return new Promise(
+        (resolve, reject) => {
 
-    const img = new Image();
+            const img =
+                new Image();
 
-    img.onload = () => resolve(img);
 
-    img.onerror = reject;
+            img.onload =
+                () => resolve(img);
 
-    img.src = src;
 
-  });
+            img.onerror =
+                reject;
+
+
+            img.src =
+                src;
+
+        }
+    );
 
 }
 
 
-/* 이미지 설정 */
+/* =========================
+   이미지 설정
+========================= */
+
 function setImage(src) {
 
-  currentImage = src;
-
-  photo.src = src;
-
-  photo.style.display = "block";
-
-  video.style.display = "none";
-
-  ocrBtn.disabled = false;
-
-  setStatus(
-    "사진 준비 완료. OCR 실행을 눌러주세요.",
-    0
-  );
-
-}
+    currentImage =
+        src;
 
 
-/* 사진 첨부 */
-fileInput.addEventListener(
-  "change",
-  function() {
-
-    const file =
-      this.files[0];
-
-    if (!file) return;
-
-    const reader =
-      new FileReader();
-
-    reader.onload =
-      function(e) {
-
-        setImage(
-          e.target.result
-        );
-
-      };
-
-    reader.readAsDataURL(file);
-
-  }
-);
+    photo.src =
+        src;
 
 
-/* 카메라 */
-cameraBtn.addEventListener(
-  "click",
-  async function() {
-
-    try {
-
-      cameraStream =
-        await navigator.mediaDevices.getUserMedia({
-
-          video: {
-
-            facingMode: {
-              ideal: "environment"
-            },
-
-            width: {
-              ideal: 2560
-            },
-
-            height: {
-              ideal: 1440
-            }
-
-          },
-
-          audio: false
-
-        });
-
-
-      video.srcObject =
-        cameraStream;
-
-      await video.play();
-
-
-      video.style.display =
+    photo.style.display =
         "block";
 
-      photo.style.display =
+
+    video.style.display =
         "none";
 
-      captureBtn.disabled =
-        false;
 
-      ocrBtn.disabled =
-        true;
-
-      setStatus(
-        "식별표를 노란 박스에 맞추고 촬영하세요."
-      );
-
-    }
-
-    catch(error) {
-
-      setStatus(
-        "카메라를 사용할 수 없습니다: "
-        + error.message
-      );
-
-    }
-
-  }
-);
-
-
-/* 촬영 */
-captureBtn.addEventListener(
-  "click",
-  function() {
-
-    if (!video.videoWidth) return;
-
-
-    const c =
-      document.createElement("canvas");
-
-    c.width =
-      video.videoWidth;
-
-    c.height =
-      video.videoHeight;
-
-
-    const ctx =
-      c.getContext("2d");
-
-    ctx.drawImage(
-      video,
-      0,
-      0,
-      c.width,
-      c.height
+    setStatus(
+        "사진 확인 완료. 자동으로 인식합니다...",
+        3
     );
 
 
-    setImage(
-      c.toDataURL(
-        "image/jpeg",
-        0.95
-      )
+    /*
+        OCR 버튼 없이
+        바로 실행
+    */
+
+    setTimeout(
+        runFullOCR,
+        100
     );
-
-
-    if (cameraStream) {
-
-      cameraStream
-        .getTracks()
-        .forEach(
-          track => track.stop()
-        );
-
-      cameraStream = null;
-
-    }
-
-  }
-);
-
-
-/*
- 사진에서 영역 자르기
-
- 여기 좌표가 중요합니다.
-
- 현재 올려주신 GLOVIS 샘플 기준:
-
- Part No.
- x 17% ~ 51%
- y 27% ~ 34%
-
- Quantity
- x 56% ~ 71%
- y 27% ~ 34%
-*/
-
-function cropImage(
-  img,
-  x,
-  y,
-  w,
-  h
-) {
-
-  const c =
-    document.createElement("canvas");
-
-  c.width =
-    Math.round(
-      img.naturalWidth * w
-    );
-
-  c.height =
-    Math.round(
-      img.naturalHeight * h
-    );
-
-
-  const ctx =
-    c.getContext("2d");
-
-
-  ctx.drawImage(
-
-    img,
-
-    Math.round(
-      img.naturalWidth * x
-    ),
-
-    Math.round(
-      img.naturalHeight * y
-    ),
-
-    Math.round(
-      img.naturalWidth * w
-    ),
-
-    Math.round(
-      img.naturalHeight * h
-    ),
-
-    0,
-    0,
-    c.width,
-    c.height
-
-  );
-
-
-  return c;
 
 }
 
 
-/* 확대 + 전처리 */
-function preprocess(
-  sourceCanvas,
-  mode
-) {
+/* =========================
+   사진 첨부
+========================= */
 
-  const scale = 5;
+fileInput.addEventListener(
+    "change",
+    function() {
 
-  const c =
-    document.createElement("canvas");
+        const file =
+            this.files[0];
 
-  c.width =
-    sourceCanvas.width *
-    scale;
 
-  c.height =
-    sourceCanvas.height *
-    scale;
+        if (!file)
+            return;
 
 
-  const ctx =
-    c.getContext("2d");
+        const reader =
+            new FileReader();
 
-  ctx.drawImage(
-    sourceCanvas,
-    0,
-    0,
-    c.width,
-    c.height
-  );
 
+        reader.onload =
+            function(e) {
 
-  const imageData =
-    ctx.getImageData(
-      0,
-      0,
-      c.width,
-      c.height
-    );
-
-
-  const data =
-    imageData.data;
-
-
-  for (
-    let i = 0;
-    i < data.length;
-    i += 4
-  ) {
-
-    let gray =
-      0.299 * data[i] +
-      0.587 * data[i + 1] +
-      0.114 * data[i + 2];
-
-
-    if (mode === "gray") {
-
-      data[i] =
-        gray;
-
-      data[i + 1] =
-        gray;
-
-      data[i + 2] =
-        gray;
-
-    }
-
-
-    if (mode === "contrast") {
-
-      gray =
-        (gray - 128) * 1.6 + 128;
-
-      gray =
-        Math.max(
-          0,
-          Math.min(
-            255,
-            gray
-          )
-        );
-
-
-      data[i] =
-        gray;
-
-      data[i + 1] =
-        gray;
-
-      data[i + 2] =
-        gray;
-
-    }
-
-
-    if (mode === "bw") {
-
-      gray =
-        gray > 175
-          ? 255
-          : 0;
-
-
-      data[i] =
-        gray;
-
-      data[i + 1] =
-        gray;
-
-      data[i + 2] =
-        gray;
-
-    }
-
-  }
-
-
-  ctx.putImageData(
-    imageData,
-    0,
-    0
-  );
-
-
-  return c;
-
-}
-
-
-/* Part No 정리 */
-function normalizePart(text) {
-
-  let s =
-    (text || "")
-      .toUpperCase()
-      .replace(
-        /[^0-9A-Z-]/g,
-        ""
-      );
-
-
-  /*
-   숫자 5와 S 혼동을 고려한
-   후보 생성
-  */
-
-  const candidates =
-    new Set();
-
-
-  candidates.add(s);
-
-  candidates.add(
-    s.replace(/S/g, "5")
-  );
-
-  candidates.add(
-    s.replace(/5/g, "S")
-  );
-
-
-  /*
-   23124-25120
-   →
-   23124-2S120
-  */
-
-  const result = [];
-
-
-  candidates.forEach(
-    candidate => {
-
-      const match =
-        candidate.match(
-          /(\d{5})-?([0-9A-Z]{5})/
-        );
-
-
-      if (!match) return;
-
-
-      let part =
-        match[1] +
-        "-" +
-        match[2];
-
-
-      /*
-       ★ 핵심 S 보정
-
-       23124-25xxx
-       → 23124-2Sxxx
-      */
-
-      if (
-        /^23124-25[0-9A-Z]{2}$/
-          .test(part)
-      ) {
-
-        part =
-          part.replace(
-            "-25",
-            "-2S"
-          );
-
-      }
-
-
-      result.push(part);
-
-    }
-  );
-
-
-  /*
-   S가 들어간 후보 우선
-  */
-
-  result.sort(
-    (a, b) => {
-
-      const aS =
-        /^23124-2S/.test(a);
-
-      const bS =
-        /^23124-2S/.test(b);
-
-
-      if (aS && !bS)
-        return -1;
-
-      if (!aS && bS)
-        return 1;
-
-
-      return 0;
-
-    }
-  );
-
-
-  return result[0] || null;
-
-}
-
-
-/* Quantity */
-function normalizeQuantity(text) {
-
-  const matches =
-    (text || "")
-      .replace(
-        /[^0-9]/g,
-        " "
-      )
-      .match(
-        /\d{1,5}/g
-      );
-
-
-  if (!matches ||
-      matches.length === 0) {
-
-    return null;
-
-  }
-
-
-  /*
-   가장 긴 숫자를 우선
-  */
-
-  matches.sort(
-    (a, b) =>
-      b.length - a.length
-  );
-
-
-  return matches[0];
-
-}
-
-
-/* OCR */
-async function runOCR(
-  canvas,
-  type
-) {
-
-  const modes = [
-    "gray",
-    "contrast",
-    "bw"
-  ];
-
-
-  const results = [];
-
-
-  for (
-    let i = 0;
-    i < modes.length;
-    i++
-  ) {
-
-    const processed =
-      preprocess(
-        canvas,
-        modes[i]
-      );
-
-
-    const image =
-      processed.toDataURL(
-        "image/png"
-      );
-
-
-    const whitelist =
-      type === "part"
-        ? "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-"
-        : "0123456789";
-
-
-    const result =
-      await Tesseract.recognize(
-
-        image,
-
-        "eng",
-
-        {
-
-          logger:
-            function(message) {
-
-              if (
-                message.status ===
-                "recognizing text"
-              ) {
-
-                const p =
-                  message.progress || 0;
-
-                setStatus(
-                  type +
-                  " OCR 진행 중...",
-                  10 +
-                  p * 70
+                setImage(
+                    e.target.result
                 );
 
-              }
+            };
 
-            },
 
-          tessedit_char_whitelist:
-            whitelist,
+        reader.readAsDataURL(file);
 
-          load_system_dawg:
-            "0",
+    }
+);
 
-          load_freq_dawg:
-            "0",
 
-          preserve_interword_spaces:
-            "1"
+/* =========================
+   카메라 시작
+========================= */
+
+cameraBtn.addEventListener(
+    "click",
+    async function() {
+
+        try {
+
+            cameraStream =
+                await navigator.mediaDevices
+                    .getUserMedia({
+
+                        video: {
+
+                            facingMode: {
+                                ideal:
+                                "environment"
+                            },
+
+                            width: {
+                                ideal:
+                                2560
+                            },
+
+                            height: {
+                                ideal:
+                                1440
+                            }
+
+                        },
+
+                        audio: false
+
+                    });
+
+
+            video.srcObject =
+                cameraStream;
+
+
+            await video.play();
+
+
+            video.style.display =
+                "block";
+
+
+            photo.style.display =
+                "none";
+
+
+            captureBtn.disabled =
+                false;
+
+
+            setStatus(
+                "노란 박스에 맞추고 촬영하세요."
+            );
 
         }
 
-      );
+
+        catch(error) {
+
+            setStatus(
+                "카메라를 사용할 수 없습니다: "
+                + error.message
+            );
+
+        }
+
+    }
+);
 
 
-    results.push(
-      result.data.text || ""
+/* =========================
+   촬영
+========================= */
+
+captureBtn.addEventListener(
+    "click",
+    function() {
+
+        if (!video.videoWidth)
+            return;
+
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+
+        canvas.width =
+            video.videoWidth;
+
+
+        canvas.height =
+            video.videoHeight;
+
+
+        const ctx =
+            canvas.getContext("2d");
+
+
+        ctx.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+        setImage(
+
+            canvas.toDataURL(
+                "image/jpeg",
+                0.95
+            )
+
+        );
+
+
+        if (cameraStream) {
+
+            cameraStream
+                .getTracks()
+                .forEach(
+                    track =>
+                        track.stop()
+                );
+
+
+            cameraStream =
+                null;
+
+        }
+
+    }
+);
+
+
+/* =========================
+   이미지 영역 자르기
+========================= */
+
+function cropImage(
+    img,
+    x,
+    y,
+    width,
+    height
+) {
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+
+    canvas.width =
+        Math.round(
+            img.naturalWidth *
+            width
+        );
+
+
+    canvas.height =
+        Math.round(
+            img.naturalHeight *
+            height
+        );
+
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    ctx.drawImage(
+
+        img,
+
+        Math.round(
+            img.naturalWidth *
+            x
+        ),
+
+        Math.round(
+            img.naturalHeight *
+            y
+        ),
+
+        Math.round(
+            img.naturalWidth *
+            width
+        ),
+
+        Math.round(
+            img.naturalHeight *
+            height
+        ),
+
+        0,
+        0,
+
+        canvas.width,
+        canvas.height
+
     );
 
-  }
 
-
-  return results;
+    return canvas;
 
 }
 
 
-/* OCR 실행 */
-ocrBtn.addEventListener(
-  "click",
-  async function() {
+/* =========================
+   이미지 전처리
+========================= */
+
+function preprocess(
+    sourceCanvas,
+    mode
+) {
+
+    const scale =
+        5;
+
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+
+    canvas.width =
+        sourceCanvas.width *
+        scale;
+
+
+    canvas.height =
+        sourceCanvas.height *
+        scale;
+
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    ctx.drawImage(
+
+        sourceCanvas,
+
+        0,
+        0,
+
+        canvas.width,
+        canvas.height
+
+    );
+
+
+    const imageData =
+        ctx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+    const data =
+        imageData.data;
+
+
+    for (
+        let i = 0;
+        i < data.length;
+        i += 4
+    ) {
+
+        let gray =
+
+            0.299 * data[i] +
+
+            0.587 * data[i + 1] +
+
+            0.114 * data[i + 2];
+
+
+        if (mode === "gray") {
+
+            data[i] =
+                gray;
+
+            data[i + 1] =
+                gray;
+
+            data[i + 2] =
+                gray;
+
+        }
+
+
+        if (mode === "contrast") {
+
+            gray =
+                (gray - 128) *
+                1.6 +
+                128;
+
+
+            gray =
+                Math.max(
+                    0,
+                    Math.min(
+                        255,
+                        gray
+                    )
+                );
+
+
+            data[i] =
+                gray;
+
+            data[i + 1] =
+                gray;
+
+            data[i + 2] =
+                gray;
+
+        }
+
+
+        if (mode === "bw") {
+
+            gray =
+                gray > 175
+                    ? 255
+                    : 0;
+
+
+            data[i] =
+                gray;
+
+            data[i + 1] =
+                gray;
+
+            data[i + 2] =
+                gray;
+
+        }
+
+    }
+
+
+    ctx.putImageData(
+        imageData,
+        0,
+        0
+    );
+
+
+    return canvas;
+
+}
+
+
+/* =========================
+   Part No. 보정
+========================= */
+
+function normalizePart(text) {
+
+    let s =
+
+        (text || "")
+            .toUpperCase()
+            .replace(
+                /[^0-9A-Z-]/g,
+                ""
+            );
+
+
+    /*
+        OCR이
+
+        23124-2S120
+
+        을
+
+        23124-25120
+
+        으로 읽는 경우를 보정
+    */
+
+
+    const match =
+        s.match(
+            /\d{5}-?[0-9A-Z]{5}/
+        );
+
+
+    if (!match)
+        return null;
+
+
+    let part =
+        match[0];
+
+
+    part =
+        part.replace(
+            /^(\d{5})([0-9A-Z]{5})$/,
+            "$1-$2"
+        );
+
+
+    /*
+        ★ S → 5 보정
+
+        23124-25xxx
+        ↓
+        23124-2Sxxx
+    */
+
+    if (
+        /^23124-25[0-9A-Z]{2}$/
+            .test(part)
+    ) {
+
+        part =
+            part.replace(
+                "-25",
+                "-2S"
+            );
+
+    }
+
+
+    return part;
+
+}
+
+
+/* =========================
+   Quantity 보정
+========================= */
+
+function normalizeQuantity(text) {
+
+    const matches =
+
+        (text || "")
+            .replace(
+                /[^0-9]/g,
+                " "
+            )
+            .match(
+                /\d{1,5}/g
+            );
+
+
+    if (
+        !matches ||
+        matches.length === 0
+    ) {
+
+        return null;
+
+    }
+
+
+    /*
+        가장 긴 숫자를 우선
+    */
+
+    matches.sort(
+        (a, b) =>
+            b.length - a.length
+    );
+
+
+    return matches[0];
+
+}
+
+
+/* =========================
+   OCR 실행
+========================= */
+
+async function runOCR(
+    canvas,
+    type
+) {
+
+    const modes = [
+
+        "gray",
+        "contrast",
+        "bw"
+
+    ];
+
+
+    const results = [];
+
+
+    for (
+        let i = 0;
+        i < modes.length;
+        i++
+    ) {
+
+        const processed =
+            preprocess(
+                canvas,
+                modes[i]
+            );
+
+
+        const image =
+            processed.toDataURL(
+                "image/png"
+            );
+
+
+        const whitelist =
+
+            type === "part"
+
+                ? "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-"
+
+                : "0123456789";
+
+
+        const result =
+            await Tesseract.recognize(
+
+                image,
+
+                "eng",
+
+                {
+
+                    logger:
+                        function(message) {
+
+                            if (
+                                message.status ===
+                                "recognizing text"
+                            ) {
+
+                                const p =
+                                    message.progress ||
+                                    0;
+
+
+                                setStatus(
+
+                                    type +
+                                    " 인식 중...",
+
+                                    10 +
+                                    p * 70
+
+                                );
+
+                            }
+
+                        },
+
+
+                    tessedit_char_whitelist:
+                        whitelist,
+
+
+                    load_system_dawg:
+                        "0",
+
+
+                    load_freq_dawg:
+                        "0",
+
+
+                    preserve_interword_spaces:
+                        "1"
+
+                }
+
+            );
+
+
+        results.push(
+            result.data.text || ""
+        );
+
+    }
+
+
+    return results;
+
+}
+
+
+/* =========================
+   전체 OCR
+========================= */
+
+async function runFullOCR() {
 
     if (!currentImage)
-      return;
-
-
-    ocrBtn.disabled =
-      true;
+        return;
 
 
     try {
 
-      setStatus(
-        "사진을 분석하고 있습니다...",
-        5
-      );
-
-
-      const img =
-        await loadImage(
-          currentImage
+        setStatus(
+            "식별표를 분석하고 있습니다...",
+            5
         );
 
 
-      /*
-       ★ GLOVIS 실제 사진 기준 영역
+        const img =
+            await loadImage(
+                currentImage
+            );
 
-       Part No:
-       x 17%
-       y 27%
-       width 34%
-       height 7%
 
-       Quantity:
-       x 56%
-       y 27%
-       width 15%
-       height 7%
-      */
+        /*
+        =================================
+        ★ GLOVIS OCR 영역
 
-      const partCanvas =
-        cropImage(
-          img,
-          0.17,
-          0.27,
-          0.34,
-          0.07
+        Part No.
+        x = 11%
+        y = 26%
+        width = 51%
+        height = 9%
+
+        Quantity
+        x = 52%
+        y = 26%
+        width = 22.5%
+        height = 9%
+
+        화면의 노란 박스와
+        동일한 영역입니다.
+        =================================
+        */
+
+
+        const partCanvas =
+            cropImage(
+
+                img,
+
+                0.11,
+                0.26,
+
+                0.51,
+                0.09
+
+            );
+
+
+        const qtyCanvas =
+            cropImage(
+
+                img,
+
+                0.52,
+                0.26,
+
+                0.225,
+                0.09
+
+            );
+
+
+        /*
+            실제 OCR 영역 표시
+        */
+
+        partPreview.src =
+            partCanvas.toDataURL(
+                "image/jpeg",
+                0.95
+            );
+
+
+        qtyPreview.src =
+            qtyCanvas.toDataURL(
+                "image/jpeg",
+                0.95
+            );
+
+
+        /* Part No. */
+
+        setStatus(
+            "Part No. 인식 중...",
+            10
         );
 
 
-      const qtyCanvas =
-        cropImage(
-          img,
-          0.56,
-          0.27,
-          0.15,
-          0.07
+        const partOCR =
+            await runOCR(
+                partCanvas,
+                "Part No."
+            );
+
+
+        /* Quantity */
+
+        setStatus(
+            "Quantity 인식 중...",
+            55
         );
 
 
-      /*
-       실제 OCR 영역 표시
-      */
+        const qtyOCR =
+            await runOCR(
+                qtyCanvas,
+                "Quantity"
+            );
 
-      partPreview.src =
-        partCanvas.toDataURL(
-          "image/jpeg",
-          0.95
+
+        /*
+            후보 정리
+        */
+
+        const partCandidates =
+
+            partOCR
+                .map(
+                    normalizePart
+                )
+                .filter(
+                    Boolean
+                );
+
+
+        const qtyCandidates =
+
+            qtyOCR
+                .map(
+                    normalizeQuantity
+                )
+                .filter(
+                    Boolean
+                );
+
+
+        /*
+            Part No.
+
+            S가 포함된 후보 우선
+        */
+
+        partCandidates.sort(
+            function(a, b) {
+
+                const aS =
+                    /^23124-2S/
+                        .test(a);
+
+
+                const bS =
+                    /^23124-2S/
+                        .test(b);
+
+
+                if (
+                    aS &&
+                    !bS
+                )
+                    return -1;
+
+
+                if (
+                    !aS &&
+                    bS
+                )
+                    return 1;
+
+
+                return 0;
+
+            }
         );
 
 
-      qtyPreview.src =
-        qtyCanvas.toDataURL(
-          "image/jpeg",
-          0.95
+        const part =
+            partCandidates[0]
+            || null;
+
+
+        /*
+            Quantity
+
+            가장 많이 나온 값을 우선
+        */
+
+        const qtyCount = {};
+
+
+        qtyCandidates.forEach(
+            function(value) {
+
+                qtyCount[value] =
+                    (qtyCount[value] || 0) +
+                    1;
+
+            }
         );
 
 
-      /*
-       Part No OCR
-      */
-
-      setStatus(
-        "Part No.를 인식하고 있습니다...",
-        10
-      );
+        let qty =
+            null;
 
 
-      const partOCR =
-        await runOCR(
-          partCanvas,
-          "Part No."
+        Object.keys(qtyCount)
+            .sort(
+                function(a, b) {
+
+                    return (
+                        qtyCount[b] -
+                        qtyCount[a]
+                    );
+
+                }
+            );
+
+
+        if (
+            Object.keys(qtyCount)
+                .length > 0
+        ) {
+
+            qty =
+                Object.keys(qtyCount)
+                    .sort(
+                        function(a, b) {
+
+                            return (
+                                qtyCount[b] -
+                                qtyCount[a]
+                            );
+
+                        }
+                    )[0];
+
+        }
+
+
+        /*
+            화면 출력
+        */
+
+        partResult.textContent =
+            part || "인식 실패";
+
+
+        qtyResult.textContent =
+            qty
+                ? qty + " EA"
+                : "인식 실패";
+
+
+        partResult.className =
+            "result-value " +
+            (
+                part
+                    ? "ok"
+                    : "fail"
+            );
+
+
+        qtyResult.className =
+            "result-value " +
+            (
+                qty
+                    ? "ok"
+                    : "fail"
+            );
+
+
+        /*
+            OCR 원문
+        */
+
+        rawResult.textContent =
+
+            "===== Part No. OCR =====\n\n" +
+
+            partOCR.join(
+                "\n----------------\n"
+            ) +
+
+            "\n\n===== Quantity OCR =====\n\n" +
+
+            qtyOCR.join(
+                "\n----------------\n"
+            ) +
+
+            "\n\n===== 최종 후보 =====\n\n" +
+
+            "Part No:\n" +
+
+            JSON.stringify(
+                partCandidates,
+                null,
+                2
+            ) +
+
+            "\n\nQuantity:\n" +
+
+            JSON.stringify(
+                qtyCandidates,
+                null,
+                2
+            );
+
+
+        setStatus(
+            "인식 완료",
+            100
         );
-
-
-      /*
-       Quantity OCR
-      */
-
-      setStatus(
-        "Quantity를 인식하고 있습니다...",
-        55
-      );
-
-
-      const qtyOCR =
-        await runOCR(
-          qtyCanvas,
-          "Quantity"
-        );
-
-
-      /*
-       결과 정리
-      */
-
-      const partCandidates =
-        partOCR
-          .map(
-            normalizePart
-          )
-          .filter(Boolean);
-
-
-      const qtyCandidates =
-        qtyOCR
-          .map(
-            normalizeQuantity
-          )
-          .filter(Boolean);
-
-
-      const part =
-        partCandidates[0] ||
-        null;
-
-
-      const qty =
-        qtyCandidates[0] ||
-        null;
-
-
-      /*
-       화면 출력
-      */
-
-      partResult.textContent =
-        part ||
-        "인식 실패";
-
-
-      qtyResult.textContent =
-        qty
-          ? qty + " EA"
-          : "인식 실패";
-
-
-      partResult.className =
-        "result-value " +
-        (
-          part
-            ? "ok"
-            : "fail"
-        );
-
-
-      qtyResult.className =
-        "result-value " +
-        (
-          qty
-            ? "ok"
-            : "fail"
-        );
-
-
-      /*
-       OCR 원문 표시
-      */
-
-      rawResult.textContent =
-        "===== Part No. OCR =====\n\n" +
-
-        partOCR.join(
-          "\n----------------\n"
-        ) +
-
-        "\n\n===== Quantity OCR =====\n\n" +
-
-        qtyOCR.join(
-          "\n----------------\n"
-        ) +
-
-        "\n\n===== 최종 후보 =====\n\n" +
-
-        "Part No 후보:\n" +
-
-        JSON.stringify(
-          partCandidates,
-          null,
-          2
-        ) +
-
-        "\n\nQuantity 후보:\n" +
-
-        JSON.stringify(
-          qtyCandidates,
-          null,
-          2
-        );
-
-
-      setStatus(
-        "OCR 완료",
-        100
-      );
 
     }
+
 
     catch(error) {
 
-      console.error(error);
-
-      setStatus(
-        "OCR 오류: " +
-        error.message
-      );
+        console.error(error);
 
 
-      rawResult.textContent =
-        error.stack ||
-        error.message;
+        setStatus(
+            "OCR 오류: " +
+            error.message
+        );
+
+
+        rawResult.textContent =
+            error.stack ||
+            error.message;
 
     }
 
-
-    ocrBtn.disabled =
-      false;
-
-  }
-);
-
-
-/*
- 샘플 버튼
-
- GitHub에서는 로컬 파일을
- 직접 내장하지 않고,
- 사진 첨부 버튼을 이용합니다.
-
- 따라서 샘플 버튼은
- 사진 첨부 안내용입니다.
-*/
-
-sampleBtn.addEventListener(
-  "click",
-  function() {
-
-    fileInput.click();
-
-  }
-);
+}
 
 </script>
 
